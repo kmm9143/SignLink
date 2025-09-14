@@ -21,7 +21,7 @@ import os                                                                       
 # Step 2: Set dataset paths
 # -----------------------------------------------------------------------------------
 DATASET_ROOT = r"C:\Datasets\ASL_Alphabet"                                        # Root directory for the ASL dataset
-DATASET_DIR = r"C:\Datasets\ASL_Alphabet\asl_alphabet_train"                      # Directory containing training images
+DATASET_DIR = r"C:\Datasets\ASL_Alphabet\asl_alphabet_train\asl_alphabet_train"   # Directory containing training images
 
 # -----------------------------------------------------------------------------------
 # Step 3: Download and extract Kaggle dataset if missing

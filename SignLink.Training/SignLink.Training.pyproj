@@ -29,6 +29,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />
+    <Content Include="saved_models\asl_cnn_model.h5" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="saved_models\" />

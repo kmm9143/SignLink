@@ -1,9 +1,14 @@
-# DESCRIPTION:  This script provides utility functions for downloading, extracting, and preprocessing
+﻿# DESCRIPTION:  This script provides utility functions for downloading, extracting, and preprocessing
 #               the American Sign Language (ASL) Alphabet image dataset for deep learning tasks.
 #               It includes Kaggle API integration for dataset management and TensorFlow-based
 #               preprocessing pipelines with normalization and augmentation for robust model training.
 # LANGUAGE:     PYTHON
-# SOURCE(S):    
+# SOURCE(S):    [1] Kaggle. (2025, September 10). Datasets API — Public API. Kaggle. Retrieved September 12, 2025, from https://www.kaggle.com/docs/api
+#               [2] Kaggle. (2025, September 10). Kaggle API (Official GitHub Repository). GitHub. Retrieved September 12, 2025, from https://github.com/Kaggle/kaggle-api
+#               [3] Gazioğlu, M. (2022, March 30). Download any dataset from Kaggle with Kaggle API and Python. Medium. Retrieved September 12, 2025, from https://medium.com/@mine.gazioglu40/download-any-dataset-from-kaggle-with-kaggle-api-and-python-9ab84165aea0
+#               [4] TensorFlow. (2025, September 10). tf.keras.utils.image_dataset_from_directory. TensorFlow API Documentation. Retrieved September 12, 2025, from https://www.tensorflow.org/api_docs/python/tf/keras/preprocessing/image_dataset_from_directory
+#               [5] TensorFlow. (2025, September 10). Data augmentation. TensorFlow Tutorials. Retrieved September 12, 2025, from https://www.tensorflow.org/tutorials/images/data_augmentation
+#               [6] Keras. (2025, September 10). Image classification from scratch. Keras Documentation. Retrieved September 12, 2025, from https://keras.io/examples/vision/image_classification_from_scratch/
 
 # -----------------------------------------------------------------------------------
 # Step 1: Import required libraries

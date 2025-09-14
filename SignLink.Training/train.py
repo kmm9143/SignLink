@@ -4,7 +4,11 @@
 #               features from images, followed by dense layers for classification. The trained model is saved
 #               for later inference or evaluation.
 # LANGUAGE:     PYTHON
-# SOURCE(S):    
+# SOURCE(S):    [1] Keras. (n.d.). Model training APIs: validation_data, validation_split, etc. Retrieved September 13, 2025, from https://keras.io/api/models/model_training_apis/
+#               [2] TensorFlow. (n.d.). Training & evaluation with the built-in methods. Retrieved September 13, 2025, from https://www.tensorflow.org/guide/keras/training_with_built_in_methods
+#               [3] Keras / TensorFlow. (n.d.). Saving & serialization: Whole model saving & loading. Retrieved September 13, 2025, from https://keras.io/api/models/model_saving_apis/
+#               [4] TensorFlow. (n.d.). Save and load models (Tutorial). Retrieved September 13, 2025, from https://www.tensorflow.org/tutorials/keras/save_and_load
+#               [5] TensorFlow. (n.d.). Using the SavedModel format. Retrieved September 13, 2025, from https://www.tensorflow.org/guide/saved_model 
 
 # -----------------------------------------------------------------------------------
 # Step 1: Import required libraries and modules

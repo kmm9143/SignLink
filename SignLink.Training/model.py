@@ -3,7 +3,10 @@
 #               convolutional layers to extract features, followed by dense layers for classification.
 #               Dropout is used for regularization, and the model is compiled with the Adam optimizer.
 # LANGUAGE:     PYTHON
-# SOURCE(S):    
+# SOURCE(S):    [1] Keras. (n.d.). Dropout layer (Keras API documentation). Retrieved September 12, 2025, from https://keras.io/api/layers/regularization_layers/dropout/
+#               [2] TensorFlow. (n.d.). tf.keras.layers.Conv2D. Retrieved September 12, 2025, from https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv2D
+#               [3] TensorFlow. (2024, August 16). Convolutional Neural Network (CNN) tutorial. Retrieved September 12, 2025, from https://www.tensorflow.org/tutorials/images/cnn
+#               [4] Pinecone. (2023, June 30). Softmax activation function: Everything you need to know. Retrieved September 12, 2025, from https://www.pinecone.io/learn/softmax-activation/
 
 import tensorflow as tf                                         # Import TensorFlow for deep learning operations
 from keras import layers, models                                # Import Keras layers and models for building neural networks

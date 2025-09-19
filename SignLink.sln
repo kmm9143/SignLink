@@ -5,8 +5,6 @@ VisualStudioVersion = 17.14.36429.23
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "SignLink.API", "SignLink.API\SignLink.API.pyproj", "{F0200DB7-CD08-40FE-B6ED-B18B1D9CA48F}"
 EndProject
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "SignLink.Training", "SignLink.Training\SignLink.Training.pyproj", "{515966AD-B044-494E-9C5E-9EB80028022A}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,8 +13,6 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{F0200DB7-CD08-40FE-B6ED-B18B1D9CA48F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F0200DB7-CD08-40FE-B6ED-B18B1D9CA48F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{515966AD-B044-494E-9C5E-9EB80028022A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{515966AD-B044-494E-9C5E-9EB80028022A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

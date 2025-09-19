@@ -17,6 +17,12 @@ import os                                                      # Import the os m
 import tensorflow as tf                                        # Import TensorFlow for machine learning and data processing
 from kaggle.api.kaggle_api_extended import KaggleApi           # Import KaggleApi for programmatic access to Kaggle datasets
 
+# If using custom augmentation, import it here
+try:
+    from .data_augmentation import tf_augment_image            # Import custom Albumentations-based augmentation
+except ImportError:
+    tf_augment_image = None                                    # If not available, set to None
+
 IMG_SIZE = (64, 64)                                            # Set the target image size for resizing input images
 BATCH_SIZE = 32                                                # Set the batch size for training and validation datasets
 
@@ -45,7 +51,7 @@ def download_and_extract_dataset(dataset_name, extract_to):     # Define a funct
 # -----------------------------------------------------------------------------------
 # Step 3: Define function to load and preprocess dataset
 # -----------------------------------------------------------------------------------
-def load_and_preprocess_dataset(dataset_dir, validation_split=0.2, seed=123): # Define a function to load and preprocess the dataset
+def load_and_preprocess_dataset(dataset_dir, validation_split=0.2, seed=123, use_custom_augmentation=False): # Define a function to load and preprocess the dataset
     """
     Loads dataset from directory, applies preprocessing, augmentation,
     and returns train/validation datasets along with class names.
@@ -54,6 +60,7 @@ def load_and_preprocess_dataset(dataset_dir, validation_split=0.2, seed=123): # 
         dataset_dir (str): Path to the dataset directory containing class subfolders.
         validation_split (float): Fraction of data to use for validation.
         seed (int): Random seed for reproducibility.
+        use_custom_augmentation (bool): Whether to use custom Albumentations-based augmentation.
 
     Returns:
         train_ds (tf.data.Dataset): Preprocessed training dataset.
@@ -63,44 +70,69 @@ def load_and_preprocess_dataset(dataset_dir, validation_split=0.2, seed=123): # 
     if not os.path.exists(dataset_dir):                        # Check if the dataset directory exists
         raise FileNotFoundError(f"Dataset directory not found: {dataset_dir}") # Raise error if directory is missing
 
-    # Load training dataset from directory with split
-    train_ds = tf.keras.utils.image_dataset_from_directory(    # Create a training dataset from images in the directory
-        dataset_dir,                                           # Path to the dataset directory
-        validation_split=validation_split,                     # Fraction of data to use for validation
-        subset="training",                                     # Specify that this is the training subset
-        seed=seed,                                             # Set random seed for reproducibility
-        image_size=IMG_SIZE,                                   # Resize images to target size
-        batch_size=BATCH_SIZE                                  # Set batch size
+    # 1. Load training dataset as unbatched if using custom augmentation
+    if use_custom_augmentation and tf_augment_image is not None:
+        train_ds = tf.keras.utils.image_dataset_from_directory(
+            dataset_dir,
+            validation_split=validation_split,
+            subset="training",
+            seed=seed,
+            image_size=IMG_SIZE,
+            batch_size=None  # <--- IMPORTANT: no batching here!
+        )
+    else:
+        train_ds = tf.keras.utils.image_dataset_from_directory(
+            dataset_dir,
+            validation_split=validation_split,
+            subset="training",
+            seed=seed,
+            image_size=IMG_SIZE,
+            batch_size=BATCH_SIZE
+        )
+
+    val_ds = tf.keras.utils.image_dataset_from_directory(
+        dataset_dir,
+        validation_split=validation_split,
+        subset="validation",
+        seed=seed,
+        image_size=IMG_SIZE,
+        batch_size=BATCH_SIZE
     )
 
-    # Load validation dataset from directory with split
-    val_ds = tf.keras.utils.image_dataset_from_directory(      # Create a validation dataset from images in the directory
-        dataset_dir,                                           # Path to the dataset directory
-        validation_split=validation_split,                     # Fraction of data to use for validation
-        subset="validation",                                   # Specify that this is the validation subset
-        seed=seed,                                             # Set random seed for reproducibility
-        image_size=IMG_SIZE,                                   # Resize images to target size
-        batch_size=BATCH_SIZE                                  # Set batch size
-    )
+    class_names = train_ds.class_names if not use_custom_augmentation else val_ds.class_names
 
-    class_names = train_ds.class_names                         # Get the list of class names from the training dataset
+    # 2. Apply custom Albumentations-based augmentation, then batch
+    if use_custom_augmentation and tf_augment_image is not None:
+        train_ds = train_ds.map(tf_augment_image)
+        train_ds = train_ds.batch(BATCH_SIZE)
 
-    # Normalize pixel values to [0, 1] for stable training [2]
-    normalization_layer = tf.keras.layers.Rescaling(1./255)    # Create a normalization layer to scale pixel values
-    train_ds = train_ds.map(lambda x, y: (normalization_layer(x), y)) # Apply normalization to training dataset
-    val_ds = val_ds.map(lambda x, y: (normalization_layer(x), y))     # Apply normalization to validation dataset
+    # 3. Normalize pixel values to [0, 1]
+    normalization_layer = tf.keras.layers.Rescaling(1./255)
+    train_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
+    val_ds = val_ds.map(lambda x, y: (normalization_layer(x), y))
 
-    # Data augmentation for improved generalization [2]
-    data_augmentation = tf.keras.Sequential([                  # Create a sequential model for data augmentation
-        tf.keras.layers.RandomFlip("horizontal"),              # Randomly flip images horizontally
-        tf.keras.layers.RandomRotation(0.1),                   # Randomly rotate images by up to 10%
-        tf.keras.layers.RandomZoom(0.1),                       # Randomly zoom images by up to 10%
-    ])
-    train_ds = train_ds.map(lambda x, y: (data_augmentation(x, training=True), y)) # Apply augmentation to training dataset
+    # 4. If not using custom augmentation, use built-in Keras augmentation
+    if not use_custom_augmentation:
+        data_augmentation = tf.keras.Sequential([
+            tf.keras.layers.RandomFlip("horizontal"),
+            tf.keras.layers.RandomRotation(0.1),
+            tf.keras.layers.RandomZoom(0.1),
+        ])
+        train_ds = train_ds.map(lambda x, y: (data_augmentation(x, training=True), y))
 
-    # Optimize dataset pipeline for performance
-    AUTOTUNE = tf.data.AUTOTUNE                                # Set AUTOTUNE for automatic performance optimization
-    train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE) # Cache, shuffle, and prefetch training data
-    val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)     # Cache and prefetch validation data
+    # 5. Optimize dataset pipeline for performance
+    AUTOTUNE = tf.data.AUTOTUNE
+    train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
+    val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
 
     return train_ds, val_ds, class_names                       # Return the processed training and validation datasets and class names
+
+# -----------------------------------------------------------------------------------
+# Step 4: (Optional) Custom Albumentations wrapper for single image augmentation
+# -----------------------------------------------------------------------------------
+def tf_augment_image(image, label):
+    aug_img = tf.py_function(func=augment_image, inp=[image], Tout=tf.uint8) # Apply Albumentations via py_function
+    aug_img.set_shape([64, 64, 3])                                          # Set static shape for TensorFlow
+    aug_img = tf.cast(aug_img, tf.float32) / 255.0                          # Normalize to [0, 1]
+    label = tf.cast(label, tf.int32)                                        # Ensure label is int32
+    return aug_img, label

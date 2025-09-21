@@ -25,7 +25,6 @@
     <Compile Include="app.py" />
     <Compile Include="inference.py" />
     <Compile Include="live_translate.py" />
-    <Compile Include="test_crops.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />

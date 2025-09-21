@@ -1,95 +1,93 @@
 ﻿import cv2
-import base64
-from io import BytesIO
-from PIL import Image
+import os
+import tempfile
 from inference_sdk import InferenceHTTPClient
 import mediapipe as mp
 
-# Initialize Roboflow client
+# Initialize Roboflow Inference client
 client = InferenceHTTPClient(
     api_url="https://serverless.roboflow.com",
-    api_key="OrkdRhEVTGpAqU13RVg0"
+    api_key="OrkdRhEVTGpAqU13RVg0"  # replace with your valid API key
 )
 
-# Mediapipe hands
+# Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
     static_image_mode=False,
-    max_num_hands=1,  # track only one hand
+    max_num_hands=1,
     min_detection_confidence=0.7,
-    min_tracking_confidence=0.5
+    min_tracking_confidence=0.7
 )
-mp_draw = mp.solutions.drawing_utils
 
-# Webcam
+# Start webcam
 cap = cv2.VideoCapture(0)
-frame_count = 0
-skip_frames = 5
-last_prediction = "Waiting..."
-last_confidence = 0
 
 while True:
     ret, frame = cap.read()
     if not ret:
         break
 
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = hands.process(frame_rgb)
+    frame = cv2.flip(frame, 1)
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    result = hands.process(rgb_frame)
 
-    frame_count += 1
+    if result.multi_hand_landmarks:
+        hand_landmarks = result.multi_hand_landmarks[0]
 
-    if results.multi_hand_landmarks:
-        hand_landmarks = results.multi_hand_landmarks[0]
-
-        # Get bounding box
+        # Get bounding box of hand
         h, w, _ = frame.shape
-        x_min = min([lm.x for lm in hand_landmarks.landmark]) * w
-        y_min = min([lm.y for lm in hand_landmarks.landmark]) * h
-        x_max = max([lm.x for lm in hand_landmarks.landmark]) * w
-        y_max = max([lm.y for lm in hand_landmarks.landmark]) * h
+        x_min = int(min([lm.x for lm in hand_landmarks.landmark]) * w)
+        x_max = int(max([lm.x for lm in hand_landmarks.landmark]) * w)
+        y_min = int(min([lm.y for lm in hand_landmarks.landmark]) * h)
+        y_max = int(max([lm.y for lm in hand_landmarks.landmark]) * h)
 
-        # Add some padding
         pad = 20
-        x_min, y_min = max(0, int(x_min - pad)), max(0, int(y_min - pad))
-        x_max, y_max = min(w, int(x_max + pad)), min(h, int(y_max + pad))
+        x_min = max(0, x_min - pad)
+        y_min = max(0, y_min - pad)
+        x_max = min(w, x_max + pad)
+        y_max = min(h, y_max + pad)
 
         # Crop hand
         hand_crop = frame[y_min:y_max, x_min:x_max]
 
-        # Only run inference every few frames
-        if frame_count % skip_frames == 0:
-            # Resize for faster inference
-            resized = cv2.resize(hand_crop, (224, 224))
-            img_pil = Image.fromarray(cv2.cvtColor(resized, cv2.COLOR_BGR2RGB))
+        # Save to temporary file
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_file:
+            temp_path = tmp_file.name
+            cv2.imwrite(temp_path, hand_crop)
 
-            # Convert to base64
-            buffered = BytesIO()
-            img_pil.save(buffered, format="JPEG")
-            img_str = base64.b64encode(buffered.getvalue()).decode()
-
-            # Run Roboflow workflow
-            result = client.run_workflow(
+        # Run prediction using the temporary file
+        try:
+            result_rf = client.run_workflow(
                 workspace_name="sweng894",
                 workflow_id="asl-alphabet",
-                images={"image": img_str},
+                images={"image": temp_path},
                 use_cache=True
             )
 
-            # Extract prediction safely
-            try:
-                last_prediction = result[0]["label"]
-                last_confidence = result[0].get("confidence", 0)
-            except (IndexError, KeyError, TypeError):
-                last_prediction = "None"
-                last_confidence = 0
+            # Extract label and confidence from nested structure
+            label = "None"
+            confidence = 0
+            if result_rf and isinstance(result_rf, list):
+                first_item = result_rf[0]
+                predictions_list = first_item.get("predictions", {}).get("predictions", [])
+                if predictions_list:
+                    label = predictions_list[0].get("class", "None")
+                    confidence = predictions_list[0].get("confidence", 0)
 
-        # Draw bounding box and hand landmarks
-        mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-        cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+            # Overlay prediction
+            cv2.putText(frame, f"{label} ({confidence:.2f})", (x_min, y_min-10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
-    # Display prediction
-    cv2.putText(frame, f"{last_prediction} ({last_confidence:.2f})", (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        except Exception as e:
+            cv2.putText(frame, "Error", (50,50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+            print("Error calling Roboflow:", e)
+
+        # Draw bounding box around hand
+        cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0,255,0), 2)
+
+        # Remove temporary file
+        os.remove(temp_path)
 
     cv2.imshow("ASL Live Translate", frame)
 
@@ -98,3 +96,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+hands.close()

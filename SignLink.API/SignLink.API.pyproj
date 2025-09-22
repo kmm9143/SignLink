@@ -11,7 +11,7 @@
     <OutputPath>.</OutputPath>
     <Name>SignLink.API</Name>
     <RootNamespace>SignLink.API</RootNamespace>
-    <InterpreterId>Global|VisualStudio|Python39</InterpreterId>
+    <InterpreterId>Global|PythonCore|3.10</InterpreterId>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -25,15 +25,22 @@
     <Compile Include="app.py" />
     <Compile Include="inference.py" />
     <Compile Include="live_translate.py" />
+    <Compile Include="tests\test_translate_video.py" />
+    <Compile Include="tests\test_translate_webcam.py" />
+    <Compile Include="tests\test_translate_image.py" />
+    <Compile Include="translate_image.py" />
+    <Compile Include="translate_video.py" />
+    <Compile Include="translate_webcam.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="tests\" />
     <Folder Include="utils\" />
   </ItemGroup>
   <ItemGroup>
-    <InterpreterReference Include="Global|VisualStudio|Python39" />
+    <InterpreterReference Include="Global|PythonCore|3.10" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

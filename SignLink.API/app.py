@@ -1,9 +1,4 @@
-﻿from fastapi import FastAPI, UploadFile, File                        # Import FastAPI and file upload utilities
-from fastapi.responses import JSONResponse                           # Import JSONResponse for API responses
-import requests                                                     # Import requests for HTTP requests to Roboflow API
-import os                                                           # Import os for environment variable access
-
-# DESCRIPTION:  This script defines a FastAPI backend for American Sign Language (ASL) image classification
+﻿# DESCRIPTION:  This script defines a FastAPI backend for American Sign Language (ASL) image classification
 #               using a Roboflow-hosted pretrained model. It exposes an endpoint for image upload, sends the
 #               image to the Roboflow API, and returns the prediction result as JSON. Designed for integration
 #               with frontend or other services for real-time ASL translation.
@@ -21,57 +16,37 @@ import os                                                           # Import os 
 # -----------------------------------------------------------------------------------
 # Step 1: Import required libraries and modules
 # -----------------------------------------------------------------------------------
-from fastapi import FastAPI, UploadFile, File                        # Import FastAPI and file upload utilities
-from fastapi.responses import JSONResponse                           # Import JSONResponse for API responses
-import requests                                                     # Import requests for HTTP requests to Roboflow API
-import os                                                           # Import os for environment variable access
+from fastapi import FastAPI                                         # Import FastAPI for building the API server
+from fastapi.middleware.cors import CORSMiddleware                  # Import CORS middleware for cross-origin requests
+
+from translate_image import router as image_router                  # Import image translation router
+from translate_video import router as video_router                  # Import video translation router
+from translate_webcam import router as webcam_router                # Import webcam translation router
 
 # -----------------------------------------------------------------------------------
-# Step 2: Load Roboflow API key and set model endpoint
+# Step 2: Initialize FastAPI application
 # -----------------------------------------------------------------------------------
-ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "OrkdRhEVTGpAqU13RVg0") # Get Roboflow API key from environment or use default
-ROBOFLOW_MODEL_URL = f"https://detect.roboflow.com/asl-alphabet/1?api_key={ROBOFLOW_API_KEY}" # Roboflow hosted API endpoint for ASL model
+app = FastAPI(title="SignLink API")                                 # Create FastAPI app instance with a title
 
 # -----------------------------------------------------------------------------------
-# Step 3: Initialize FastAPI app
+# Step 3: Configure CORS (Cross-Origin Resource Sharing)
 # -----------------------------------------------------------------------------------
-app = FastAPI(
-    title="SignLink API (Roboflow)",                                 # Set API title
-    description="ASL Translation Backend using Roboflow Pretrained Model", # Set API description
-    version="1.0"                                                    # Set API version
+origins = [
+    "http://localhost:51232",                                       # Allow local frontend (localhost)
+    "http://127.0.0.1:51232"                                        # Allow local frontend (127.0.0.1)
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,                                          # Restrict allowed origins (use ["*"] for all during testing)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # -----------------------------------------------------------------------------------
-# Step 4: Define image prediction endpoint
+# Step 4: Include API routers for different translation modes
 # -----------------------------------------------------------------------------------
-@app.post("/predict-image")                                          # Define POST endpoint for image prediction
-async def predict_image(file: UploadFile = File(...)):               # Async function to handle image upload and prediction
-    try:
-        # Read file into memory
-        img_bytes = await file.read()                                # Read uploaded file contents as bytes
-
-        # Send to Roboflow hosted model
-        resp = requests.post(                                        # Send POST request to Roboflow API
-            ROBOFLOW_MODEL_URL,
-            files={"file": img_bytes}
-        )
-
-        if resp.status_code != 200:                                  # If Roboflow API returns error
-            return JSONResponse(
-                content={"error": resp.text},                        # Return error message as JSON
-                status_code=resp.status_code
-            )
-
-        result = resp.json()                                         # Parse JSON response from Roboflow
-
-        return JSONResponse(content=result)                          # Return prediction result as JSON
-
-    except Exception as e:                                           # Handle exceptions during prediction
-        return JSONResponse(content={"error": str(e)}, status_code=500) # Return error message as JSON
-
-# -----------------------------------------------------------------------------------
-# Step 5: Run the API server (development mode)
-# -----------------------------------------------------------------------------------
-if __name__ == "__main__":                                           # Run this block only if script is executed directly
-    import uvicorn                                                   # Import uvicorn for running the server
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True) # Start FastAPI server with auto-reload
+app.include_router(image_router)                                    # Add image translation endpoints
+app.include_router(video_router)                                    # Add video translation endpoints
+app.include_router(webcam_router)                                   # Add webcam translation endpoints

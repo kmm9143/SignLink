@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Hands } from "@mediapipe/hands";
 
 export default function WebcamTranslate() {
     const videoRef = useRef(null);
@@ -11,20 +12,6 @@ export default function WebcamTranslate() {
         let ws;
         let hands;
         let animationId;
-
-        // Dynamically load MediaPipe Hands from CDN
-        const loadMediaPipe = () => {
-            return new Promise((resolve) => {
-                if (window.Hands) {
-                    resolve();
-                    return;
-                }
-                const script = document.createElement("script");
-                script.src = "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
-                script.onload = resolve;
-                document.body.appendChild(script);
-            });
-        };
 
         const setupWebSocket = () => {
             ws = new WebSocket("ws://127.0.0.1:8000/webcam/ws");
@@ -52,10 +39,11 @@ export default function WebcamTranslate() {
         const startVideo = async () => {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             videoRef.current.srcObject = stream;
-            videoRef.current.play();
+            videoRef.current.onloadedmetadata = () => {
+                videoRef.current.play();
+            };
         };
 
-        // Send a frame to the backend
         const sendFrame = () => {
             if (videoRef.current && ws.readyState === WebSocket.OPEN) {
                 const canvas = document.createElement("canvas");
@@ -69,32 +57,35 @@ export default function WebcamTranslate() {
             }
         };
 
-        // Start or stop the interval based on hand presence
         const updateInterval = (handPresent) => {
             if (handPresent && !intervalIdRef.current) {
-                intervalIdRef.current = setInterval(sendFrame, 3000);
+                intervalIdRef.current = setInterval(sendFrame, 1000);
             } else if (!handPresent && intervalIdRef.current) {
                 clearInterval(intervalIdRef.current);
                 intervalIdRef.current = null;
             }
         };
 
-        // Hand detection loop
-        const detectHand = async () => {
-            if (!window.Hands) return;
-            if (!hands) {
-                hands = new window.Hands({
-                    locateFile: (file) =>
-                        `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-                });
-                hands.setOptions({
-                    maxNumHands: 1,
-                    modelComplexity: 1,
-                    minDetectionConfidence: 0.7,
-                    minTrackingConfidence: 0.7,
-                });
-            }
+        hands = new Hands({
+            locateFile: (file) =>
+                `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+        });
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7,
+        });
 
+        hands.onResults((results) => {
+            const handPresent = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
+            if (handPresentRef.current !== handPresent) {
+                handPresentRef.current = handPresent;
+                updateInterval(handPresent);
+            }
+        });
+
+        const detectHand = async () => {
             const canvas = document.createElement("canvas");
             const video = videoRef.current;
             if (video && video.videoWidth > 0 && video.videoHeight > 0) {
@@ -102,27 +93,14 @@ export default function WebcamTranslate() {
                 canvas.height = video.videoHeight;
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
                 await hands.send({ image: canvas });
-
-                hands.onResults((results) => {
-                    const handPresent = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
-                    if (handPresentRef.current !== handPresent) {
-                        handPresentRef.current = handPresent;
-                        updateInterval(handPresent);
-                    }
-                });
             }
             animationId = requestAnimationFrame(detectHand);
         };
 
-        (async () => {
-            await loadMediaPipe();
-            setupWebSocket();
-            await startVideo();
-            detectHand();
-        })();
+        setupWebSocket();
+        startVideo();
+        detectHand();
 
         return () => {
             if (ws) ws.close();

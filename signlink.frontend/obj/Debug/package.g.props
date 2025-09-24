@@ -9,6 +9,7 @@
     <PackageJsonScriptsBuild Condition="$(PackageJsonScriptsBuild) == ''">vite build</PackageJsonScriptsBuild>
     <PackageJsonScriptsLint Condition="$(PackageJsonScriptsLint) == ''">eslint .</PackageJsonScriptsLint>
     <PackageJsonScriptsPreview Condition="$(PackageJsonScriptsPreview) == ''">vite preview</PackageJsonScriptsPreview>
+    <PackageJsonDependenciesMediapipeCameraUtils Condition="$(PackageJsonDependenciesMediapipeCameraUtils) == ''">^0.3.1675466862</PackageJsonDependenciesMediapipeCameraUtils>
     <PackageJsonDependenciesMediapipeDrawingUtils Condition="$(PackageJsonDependenciesMediapipeDrawingUtils) == ''">^0.3.1675466124</PackageJsonDependenciesMediapipeDrawingUtils>
     <PackageJsonDependenciesMediapipeHands Condition="$(PackageJsonDependenciesMediapipeHands) == ''">^0.4.1675469240</PackageJsonDependenciesMediapipeHands>
     <PackageJsonDependenciesAxios Condition="$(PackageJsonDependenciesAxios) == ''">^1.12.2</PackageJsonDependenciesAxios>

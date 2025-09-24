@@ -116,7 +116,21 @@ export default function WebcamTranslate() {
             {prediction && (
                 <div style={{ marginTop: "1rem" }}>
                     <h3>Prediction:</h3>
-                    <pre>{JSON.stringify(prediction, null, 2)}</pre>
+                    {Array.isArray(prediction) ? (
+                        prediction.map((item, idx) =>
+                            item.label && item.confidence !== undefined ? (
+                                <div key={idx}>
+                                    {item.label}: {(item.confidence * 100).toFixed(1)}%
+                                </div>
+                            ) : null
+                        )
+                    ) : (
+                        prediction.label && prediction.confidence !== undefined ? (
+                            <div>
+                                {prediction.label}: {(prediction.confidence * 100).toFixed(1)}%
+                            </div>
+                        ) : null
+                    )}
                 </div>
             )}
         </div>

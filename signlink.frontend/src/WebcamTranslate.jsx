@@ -110,27 +110,44 @@ export default function WebcamTranslate() {
     }, []);
 
     return (
-        <div style={{ padding: "2rem" }}>
-            <video ref={videoRef} width={640} height={480} autoPlay style={{ display: "block", marginBottom: "1rem" }} />
-            <canvas ref={canvasRef} width={640} height={480} style={{ border: "1px solid black" }} />
+        <div style={{ padding: "2rem" }}>   
+            <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <span style={{ marginBottom: "0.5rem", fontWeight: "bold" }}>Live Feed</span>
+                    <video
+                        ref={videoRef}
+                        width={640}
+                        height={480}
+                        autoPlay
+                        style={{ display: "block" }}
+                    />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <span style={{ marginBottom: "0.5rem", fontWeight: "bold" }}>Frame Used for Translation</span>
+                    <canvas
+                        ref={canvasRef}
+                        width={640}
+                        height={480}
+                        style={{ border: "1px solid black" }}
+                    />
+                </div>
+            </div>
             {prediction && (
                 <div style={{ marginTop: "1rem" }}>
                     <h3>Prediction:</h3>
                     {Array.isArray(prediction) ? (
                         prediction.map((item, idx) =>
-                            item.label && item.confidence !== undefined ? (
-                                <div key={idx}>
-                                    {item.label}: {(item.confidence * 100).toFixed(1)}%
-                                </div>
-                            ) : null
+                            item.predictions && item.predictions.predictions
+                                ? item.predictions.predictions.map((pred, pidx) =>
+                                    pred.class && pred.confidence !== undefined ? (
+                                        <div key={`${idx}-${pidx}`}>
+                                            {pred.class}: {(pred.confidence * 100).toFixed(1)}%
+                                        </div>
+                                    ) : null
+                                )
+                                : null
                         )
-                    ) : (
-                        prediction.label && prediction.confidence !== undefined ? (
-                            <div>
-                                {prediction.label}: {(prediction.confidence * 100).toFixed(1)}%
-                            </div>
-                        ) : null
-                    )}
+                    ) : null}
                 </div>
             )}
         </div>

@@ -1,155 +1,95 @@
-import { useEffect, useRef, useState } from "react";
-import { Hands } from "@mediapipe/hands";
+﻿import React, { useEffect, useRef, useState } from "react";
 
-export default function WebcamTranslate() {
+const WebcamTranslator = () => {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
+    const wsRef = useRef(null);
     const [prediction, setPrediction] = useState(null);
-    const intervalIdRef = useRef(null);
-    const handPresentRef = useRef(false);
+    const [connected, setConnected] = useState(false);
 
     useEffect(() => {
-        let ws;
-        let hands;
-        let animationId;
-
-        const setupWebSocket = () => {
-            ws = new WebSocket("ws://127.0.0.1:8000/webcam/ws");
-            ws.binaryType = "arraybuffer";
-            ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    setPrediction(data.prediction);
-                } catch {
-                    const blob = new Blob([event.data], { type: "image/jpeg" });
-                    const url = URL.createObjectURL(blob);
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = canvasRef.current;
-                        const ctx = canvas.getContext("2d");
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        URL.revokeObjectURL(url);
-                    };
-                    img.src = url;
+        const startWebcam = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
                 }
-            };
-            ws.onclose = () => console.log("WebSocket closed");
+            } catch (err) {
+                console.error("Webcam access denied:", err);
+            }
         };
 
-        const startVideo = async () => {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            videoRef.current.srcObject = stream;
-            videoRef.current.onloadedmetadata = () => {
-                videoRef.current.play();
-            };
+        startWebcam();
+
+        const ws = new WebSocket("ws://localhost:8000/webcam/ws");
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+            setConnected(true);
+            console.log("[WS] Connected");
         };
 
-        const sendFrame = () => {
-            if (videoRef.current && ws.readyState === WebSocket.OPEN) {
+        ws.onclose = () => {
+            setConnected(false);
+            console.log("[WS] Disconnected");
+        };
+
+        ws.onmessage = (event) => {
+            if (typeof event.data === "string") {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.prediction) {
+                        setPrediction(msg.prediction);
+                    }
+                } catch (e) {
+                    console.warn("Non-JSON message:", event.data);
+                }
+            } else {
+                // Annotated frame as binary → show in canvas
+                const img = new Image();
+                img.onload = () => {
+                    const ctx = canvasRef.current.getContext("2d");
+                    ctx.drawImage(img, 0, 0, canvasRef.current.width, canvasRef.current.height);
+                };
+                img.src = URL.createObjectURL(event.data);
+            }
+        };
+
+        return () => {
+            if (wsRef.current) wsRef.current.close();
+        };
+    }, []);
+
+    // Send frame every 500ms
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (videoRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
                 const canvas = document.createElement("canvas");
                 canvas.width = videoRef.current.videoWidth;
                 canvas.height = videoRef.current.videoHeight;
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(videoRef.current, 0, 0);
-                canvas.toBlob((blob) => {
-                    if (blob) ws.send(blob);
-                }, "image/jpeg");
+
+                // Convert to base64 and send
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.6); // compress for speed
+                wsRef.current.send(dataUrl);
             }
-        };
+        }, 500); // adjustable frequency
 
-        const updateInterval = (handPresent) => {
-            if (handPresent && !intervalIdRef.current) {
-                intervalIdRef.current = setInterval(sendFrame, 1000);
-            } else if (!handPresent && intervalIdRef.current) {
-                clearInterval(intervalIdRef.current);
-                intervalIdRef.current = null;
-            }
-        };
-
-        hands = new Hands({
-            locateFile: (file) =>
-                `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-        });
-        hands.setOptions({
-            maxNumHands: 1,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.7,
-            minTrackingConfidence: 0.7,
-        });
-
-        hands.onResults((results) => {
-            const handPresent = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
-            if (handPresentRef.current !== handPresent) {
-                handPresentRef.current = handPresent;
-                updateInterval(handPresent);
-            }
-        });
-
-        const detectHand = async () => {
-            const canvas = document.createElement("canvas");
-            const video = videoRef.current;
-            if (video && video.videoWidth > 0 && video.videoHeight > 0) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                await hands.send({ image: canvas });
-            }
-            animationId = requestAnimationFrame(detectHand);
-        };
-
-        setupWebSocket();
-        startVideo();
-        detectHand();
-
-        return () => {
-            if (ws) ws.close();
-            if (intervalIdRef.current) clearInterval(intervalIdRef.current);
-            if (animationId) cancelAnimationFrame(animationId);
-        };
+        return () => clearInterval(interval);
     }, []);
 
     return (
-        <div style={{ padding: "2rem" }}>   
-            <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <span style={{ marginBottom: "0.5rem", fontWeight: "bold" }}>Live Feed</span>
-                    <video
-                        ref={videoRef}
-                        width={640}
-                        height={480}
-                        autoPlay
-                        style={{ display: "block" }}
-                    />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <span style={{ marginBottom: "0.5rem", fontWeight: "bold" }}>Frame Used for Translation</span>
-                    <canvas
-                        ref={canvasRef}
-                        width={640}
-                        height={480}
-                        style={{ border: "1px solid black" }}
-                    />
-                </div>
+        <div className="p-4">
+            <h2 className="text-lg font-bold mb-2">Live ASL Translator</h2>
+            <video ref={videoRef} autoPlay playsInline className="hidden" />
+            <canvas ref={canvasRef} width={640} height={480} className="border rounded" />
+            <div className="mt-2">
+                <p>Status: {connected ? "🟢 Connected" : "🔴 Disconnected"}</p>
+                <p>Prediction: {prediction ? JSON.stringify(prediction) : "None"}</p>
             </div>
-            {prediction && (
-                <div style={{ marginTop: "1rem" }}>
-                    <h3>Prediction:</h3>
-                    {Array.isArray(prediction) ? (
-                        prediction.map((item, idx) =>
-                            item.predictions && item.predictions.predictions
-                                ? item.predictions.predictions.map((pred, pidx) =>
-                                    pred.class && pred.confidence !== undefined ? (
-                                        <div key={`${idx}-${pidx}`}>
-                                            {pred.class}: {(pred.confidence * 100).toFixed(1)}%
-                                        </div>
-                                    ) : null
-                                )
-                                : null
-                        )
-                    ) : null}
-                </div>
-            )}
         </div>
     );
-}
+};
+
+export default WebcamTranslator;

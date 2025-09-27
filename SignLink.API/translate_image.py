@@ -19,8 +19,12 @@
 from fastapi import APIRouter, UploadFile, File                        # FastAPI router and file upload support
 from fastapi.responses import JSONResponse                             # For returning JSON responses
 import tempfile                                                        # For creating temporary files
-import os                                                             # For environment variables and file operations
+import os                                                              # For environment variables and file operations
 from inference_sdk import InferenceHTTPClient                          # Roboflow Inference client for API calls
+
+# Extra imports for preprocessing
+import cv2                                                             # OpenCV for image manipulation
+import mediapipe as mp                                                 # MediaPipe for hand detection
 
 # -----------------------------------------------------------------------------------
 # Step 2: Initialize API router and Roboflow client
@@ -37,35 +41,99 @@ client = InferenceHTTPClient(
 )
 
 # -----------------------------------------------------------------------------------
-# Step 3: Define image prediction endpoint
+# Step 3: MediaPipe Hand Preprocessing Function
+# -----------------------------------------------------------------------------------
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(
+    static_image_mode=True,
+    max_num_hands=1,
+    min_detection_confidence=0.3  # relaxed sensitivity
+)
+
+drawing_utils = mp.solutions.drawing_utils
+
+def preprocess_with_mediapipe(image_path: str) -> str:
+    """
+    Detects a hand in the image using MediaPipe and crops the bounding box.
+    Saves an overlay for debugging.
+    Returns the path of the cropped image, or the original if no hand detected.
+    """
+    try:
+        image = cv2.imread(image_path)
+        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        results = hands.process(rgb)
+
+        if not results.multi_hand_landmarks:
+            print(f"[DEBUG] No hand detected in {image_path}, sending original image")
+            return image_path
+
+        # Get bounding box from hand landmarks
+        h, w, _ = image.shape
+        hand = results.multi_hand_landmarks[0]
+
+        x_min = min([lm.x for lm in hand.landmark]) * w
+        y_min = min([lm.y for lm in hand.landmark]) * h
+        x_max = max([lm.x for lm in hand.landmark]) * w
+        y_max = max([lm.y for lm in hand.landmark]) * h
+
+        # Crop safely (clamp to image size)
+        x_min, y_min = max(int(x_min), 0), max(int(y_min), 0)
+        x_max, y_max = min(int(x_max), w), min(int(y_max), h)
+
+        cropped = image[y_min:y_max, x_min:x_max]
+
+        # Save cropped version
+        cropped_path = image_path.replace(".jpg", "_cropped.jpg")
+        cv2.imwrite(cropped_path, cropped)
+
+        # Save debug overlay with landmarks drawn
+        for hand_landmarks in results.multi_hand_landmarks:
+            drawing_utils.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+        overlay_path = image_path.replace(".jpg", "_overlay.jpg")
+        cv2.imwrite(overlay_path, image)
+
+        print(f"[DEBUG] Hand detected, cropped image saved at {cropped_path}")
+        print(f"[DEBUG] Overlay with landmarks saved at {overlay_path}")
+
+        return cropped_path
+
+    except Exception as e:
+        print(f"[DEBUG] Preprocessing failed: {e}, sending original image")
+        return image_path
+
+# -----------------------------------------------------------------------------------
+# Step 4: Define image prediction endpoint
 # -----------------------------------------------------------------------------------
 @router.post("/predict")
 async def predict_image(file: UploadFile = File(...)):
     """
-    Predict ASL letter from uploaded image.
-
-    Parameters:
-    - file: UploadFile: The image file uploaded by the user.
-
-    Returns:
-    - JSONResponse: A response containing the prediction result or error message.
+    Predict ASL letter from uploaded image with MediaPipe preprocessing.
     """
     try:
         # Save uploaded image temporarily
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_file:
-            tmp_file.write(await file.read())                          # Write uploaded image to temp file
-            temp_path = tmp_file.name                                  # Store temp file path
+            tmp_file.write(await file.read())
+            temp_path = tmp_file.name
+
+        # Run preprocessing step
+        cropped_path = preprocess_with_mediapipe(temp_path)
 
         # Run Roboflow workflow for ASL prediction
         result = client.run_workflow(
-            workspace_name=WORKSPACE,                                  # Roboflow workspace name
-            workflow_id=WORKFLOW_ID,                                   # Roboflow workflow ID
-            images={"image": temp_path},                               # Pass image file path
-            use_cache=True                                             # Use cached results if available
+            workspace_name=WORKSPACE,
+            workflow_id=WORKFLOW_ID,
+            images={"image": cropped_path},
+            use_cache=True
         )
 
-        os.remove(temp_path)                                           # Delete temporary image file
-        return JSONResponse(content=result)                            # Return prediction result as JSON
+        # Cleanup (keep overlay for debug, remove temp + cropped)
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        if cropped_path != temp_path and os.path.exists(cropped_path):
+            os.remove(cropped_path)
+
+        return JSONResponse(content=result)
 
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500) # Return error as JSON if exception occurs
+        return JSONResponse(content={"error": str(e)}, status_code=500)

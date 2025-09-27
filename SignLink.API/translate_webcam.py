@@ -1,4 +1,4 @@
-# DESCRIPTION:  This script provides a FastAPI WebSocket endpoint for real-time ASL (American Sign Language)
+﻿# DESCRIPTION:  This script provides a FastAPI WebSocket endpoint for real-time ASL (American Sign Language)
 #               translation using webcam frames. It receives video frames from the frontend, detects hands
 #               using MediaPipe, crops the hand region, and sends it to a Roboflow Inference API for ASL
 #               alphabet prediction. The predicted label and confidence are sent back to the frontend along
@@ -14,96 +14,130 @@
 #               [8] Warchocki, J., Vlasenko, M., & Eisma, Y. B. (2023, October 23). GRLib: An open-source hand gesture detection and recognition python library. arXiv. Retrieved September 19, 2025, from https://arxiv.org/abs/2310.14919
 #               [9] Gautam, A. (2024). Hand recognition using OpenCV & MediaPipe. Medium. Retrieved September 19, 2025, from https://medium.com/aditee-gautam/hand-recognition-using-opencv-a7b109941c88
 
-# -----------------------------------------------------------------------------------
-# Step 1: Import required libraries and modules
-# -----------------------------------------------------------------------------------
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import cv2
 import mediapipe as mp
-import tempfile
-import os
-from inference_sdk import InferenceHTTPClient
 import numpy as np
+import base64
+import io
+import os
+import logging
+from PIL import Image
+from inference_sdk import InferenceHTTPClient
 
-# -----------------------------------------------------------------------------------
-# Step 2: Initialize API router, Roboflow client, and MediaPipe Hands
-# -----------------------------------------------------------------------------------
-router = APIRouter(prefix="/webcam", tags=["webcam"])                  # Create router for webcam endpoints
+# -----------------------------------------------------------------------------
+# Logging setup
+# -----------------------------------------------------------------------------
+logging.basicConfig(level=logging.INFO)  # change to DEBUG for detailed logs
+logger = logging.getLogger("asl-webcam")
+
+# -----------------------------------------------------------------------------
+# Step 1: Setup router, Roboflow client, and MediaPipe Hands
+# -----------------------------------------------------------------------------
+router = APIRouter(prefix="/webcam", tags=["webcam"])
 
 # Roboflow Inference client setup
-ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "OrkdRhEVTGpAqU13RVg0") # Get Roboflow API key from environment or use default
-WORKSPACE = "sweng894"                                                 # Roboflow workspace name
-WORKFLOW_ID = "asl-alphabet"                                           # Roboflow workflow ID
+ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "OrkdRhEVTGpAqU13RVg0")
+WORKSPACE = "sweng894"
+WORKFLOW_ID = "asl-alphabet"
 client = InferenceHTTPClient(api_url="https://serverless.roboflow.com", api_key=ROBOFLOW_API_KEY)
 
 # MediaPipe Hands setup
-mp_hands = mp.solutions.hands                                          # Reference to MediaPipe Hands solution
+mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
-    static_image_mode=False,                                           # Use video stream (not static images)
-    max_num_hands=1,                                                   # Detect only one hand
-    min_detection_confidence=0.7,                                      # Minimum confidence for detection
-    min_tracking_confidence=0.7                                        # Minimum confidence for tracking
+    static_image_mode=False,
+    max_num_hands=1,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7,
 )
 
-# -----------------------------------------------------------------------------------
-# Step 3: Define WebSocket endpoint for real-time webcam translation
-# -----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Step 2: Define WebSocket endpoint
+# -----------------------------------------------------------------------------
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()                                           # Accept WebSocket connection
+    await websocket.accept()
+    logger.info("WebSocket connection established")
+
     try:
         while True:
-            # Receive raw frame from frontend
-            frame_bytes = await websocket.receive_bytes()              # Receive frame as bytes
-            np_arr = np.frombuffer(frame_bytes, np.uint8)             # Convert bytes to NumPy array
-            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)            # Decode image from array
-            h, w, _ = frame.shape                                     # Get frame dimensions
+            # -----------------------------------------------------------------
+            # Step 2a: Receive base64 frame
+            # -----------------------------------------------------------------
+            data = await websocket.receive_text()
+            if not data.startswith("data:image"):
+                logger.warning("Non-image data received, skipping...")
+                continue
 
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)        # Convert frame to RGB for MediaPipe
-            results = hands.process(rgb_frame)                        # Run hand detection
+            # Decode base64 → bytes → np.array → OpenCV frame
+            base64_data = data.split(",")[1]
+            img_bytes = base64.b64decode(base64_data)
+            img_array = np.frombuffer(img_bytes, np.uint8)
+            frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+
+            if frame is None:
+                logger.error("Failed to decode frame")
+                continue
+
+            logger.debug(f"Frame received: {frame.shape}")
+
+            # -----------------------------------------------------------------
+            # Step 2b: Run MediaPipe Hand Detection
+            # -----------------------------------------------------------------
+            h, w, _ = frame.shape
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = hands.process(rgb_frame)
 
             prediction_data = None
-            if results.multi_hand_landmarks:                          # If at least one hand is detected
-                lm = results.multi_hand_landmarks[0].landmark         # Get landmarks for the first detected hand
+            if results.multi_hand_landmarks:
+                logger.debug("Hand detected ✅")
 
-                # Get bounding box of hand
+                # Get bounding box
+                lm = results.multi_hand_landmarks[0].landmark
                 x_min = int(min([l.x for l in lm]) * w)
                 x_max = int(max([l.x for l in lm]) * w)
                 y_min = int(min([l.y for l in lm]) * h)
                 y_max = int(max([l.y for l in lm]) * h)
+
                 pad = 20
                 x_min, y_min = max(0, x_min - pad), max(0, y_min - pad)
                 x_max, y_max = min(w, x_max + pad), min(h, y_max + pad)
 
-                # Crop hand and save temp image for Roboflow
-                hand_crop = frame[y_min:y_max, x_min:x_max]           # Crop the hand region from the frame
-                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_file:
-                    cv2.imwrite(tmp_file.name, hand_crop)             # Write cropped hand image to temp file
-                    temp_path = tmp_file.name
+                # -----------------------------------------------------------------
+                # Step 2c: Validate crop and send to Roboflow
+                # -----------------------------------------------------------------
+                if x_max > x_min and y_max > y_min:
+                    hand_crop = frame[y_min:y_max, x_min:x_max]
+                    logger.debug(f"Hand crop shape: {hand_crop.shape}")
 
-                try:
-                    # Run Roboflow workflow for ASL prediction
-                    result_rf = client.run_workflow(
-                        workspace_name=WORKSPACE,                    # Roboflow workspace name
-                        workflow_id=WORKFLOW_ID,                     # Roboflow workflow ID
-                        images={"image": temp_path},                 # Pass cropped hand image
-                        use_cache=True                               # Use cached results if available
-                    )
-                    prediction_data = result_rf                      # Store prediction result
-                except Exception as e:
-                    print("Roboflow error:", e)                      # Print error if Roboflow call fails
-                finally:
-                    os.remove(temp_path)                             # Delete temporary image file
+                    if hand_crop.size > 0:
+                        _, buffer = cv2.imencode(".jpg", hand_crop)
+                        pil_img = Image.open(io.BytesIO(buffer.tobytes()))
 
-                # Draw bounding box on frame
-                cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0,255,0), 2) # Draw rectangle around detected hand
+                        try:
+                            result_rf = client.run_workflow(
+                                workspace_name=WORKSPACE,
+                                workflow_id=WORKFLOW_ID,
+                                images={"image": pil_img},
+                                use_cache=True,
+                            )
+                            prediction_data = result_rf
+                            logger.info(f"Roboflow prediction: {prediction_data}")
+                        except Exception as e:
+                            logger.error(f"Roboflow call failed: {e}")
 
-            # Encode frame back to bytes to send to frontend
-            _, buffer = cv2.imencode(".jpg", frame)                  # Encode frame as JPEG
-            await websocket.send_bytes(buffer.tobytes())             # Send annotated frame to frontend
-            
-            # Send prediction as separate JSON message
-            await websocket.send_json({"prediction": prediction_data}) # Send prediction result as JSON
+                # Draw bounding box
+                cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+
+            else:
+                logger.debug("No hand detected ❌")
+
+            # -----------------------------------------------------------------
+            # Step 2d: Send back frame + prediction
+            # -----------------------------------------------------------------
+            _, buffer = cv2.imencode(".jpg", frame)
+            await websocket.send_bytes(buffer.tobytes())  # annotated frame
+            await websocket.send_json({"prediction": prediction_data})  # JSON prediction
 
     except WebSocketDisconnect:
-        print("Client disconnected")                                 # Handle client disconnect
+        logger.info("Client disconnected")

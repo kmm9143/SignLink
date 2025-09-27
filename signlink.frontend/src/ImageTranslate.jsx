@@ -11,14 +11,22 @@ export default function ImageTranslate() {
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
-        setFile(selectedFile);
         setPrediction(null);
         setError(null);
 
         if (selectedFile) {
+            const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+            if (!validTypes.includes(selectedFile.type)) {
+                setFile(null);
+                setPreviewUrl(null);
+                setError('Invalid file type. Please upload a PNG or JPG image.');
+                return;
+            }
+            setFile(selectedFile);
             const url = URL.createObjectURL(selectedFile);
             setPreviewUrl(url);
         } else {
+            setFile(null);
             setPreviewUrl(null);
         }
         console.log('Selected file:', selectedFile);
@@ -109,7 +117,7 @@ export default function ImageTranslate() {
                 <input type="file" accept="image/*" onChange={handleFileChange} />
                 <button
                     onClick={handleSubmit}
-                    disabled={loading}
+                    disabled={loading || !file}
                     style={{ marginLeft: '1rem' }}
                 >
                     {loading ? 'Translating...' : 'Translate'}

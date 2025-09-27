@@ -41,11 +41,10 @@ const WebcamTranslator = () => {
                     if (msg.prediction) {
                         setPrediction(msg.prediction);
                     }
-                } catch (e) {
+                } catch {
                     console.warn("Non-JSON message:", event.data);
                 }
             } else {
-                // Annotated frame as binary → show in canvas
                 const img = new Image();
                 img.onload = () => {
                     const ctx = canvasRef.current.getContext("2d");
@@ -70,14 +69,29 @@ const WebcamTranslator = () => {
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(videoRef.current, 0, 0);
 
-                // Convert to base64 and send
-                const dataUrl = canvas.toDataURL("image/jpeg", 0.6); // compress for speed
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
                 wsRef.current.send(dataUrl);
             }
-        }, 500); // adjustable frequency
+        }, 500);
 
         return () => clearInterval(interval);
     }, []);
+
+    // Helper to format prediction
+    const renderPrediction = () => {
+        if (!prediction) return "None";
+
+        try {
+            const parsed = Array.isArray(prediction) ? prediction[0] : prediction;
+            const preds = parsed?.predictions?.predictions || [];
+            if (preds.length === 0) return "No hand detected";
+
+            const top = preds[0]; // take highest confidence
+            return `${top.class} (${(top.confidence * 100).toFixed(1)}%)`;
+        } catch {
+            return "Invalid prediction format";
+        }
+    };
 
     return (
         <div className="p-4">
@@ -85,8 +99,7 @@ const WebcamTranslator = () => {
             <video ref={videoRef} autoPlay playsInline className="hidden" />
             <canvas ref={canvasRef} width={640} height={480} className="border rounded" />
             <div className="mt-2">
-                <p>Status: {connected ? "🟢 Connected" : "🔴 Disconnected"}</p>
-                <p>Prediction: {prediction ? JSON.stringify(prediction) : "None"}</p>
+                <p>Prediction: {renderPrediction()}</p>
             </div>
         </div>
     );

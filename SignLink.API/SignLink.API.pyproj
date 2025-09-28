@@ -31,11 +31,15 @@
     <Compile Include="translate_image.py" />
     <Compile Include="translate_video.py" />
     <Compile Include="translate_webcam.py" />
+    <Compile Include="utils\mediapipe_utils.py" />
+    <Compile Include="utils\roboflow_client.py" />
+    <Compile Include="utils\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="utils\" />
     <Folder Include="tests\" />
   </ItemGroup>
   <ItemGroup>

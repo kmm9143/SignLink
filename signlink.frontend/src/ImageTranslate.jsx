@@ -116,15 +116,51 @@ export default function ImageTranslate() {
     };
 
     // -----------------------------------------------------------------------------------
-    // Helper: render predictions (with class + confidence) from received data
+    // Helper: render current prediction (with low-confidence warning)
     // -----------------------------------------------------------------------------------
-    const renderPrediction = (prediction) => {
+    const renderCurrentPrediction = (prediction) => {
         if (Array.isArray(prediction)) {
             return prediction.map((item, idx) =>
                 item.predictions && item.predictions.predictions
                     ? item.predictions.predictions.map((pred, pidx) =>
                         pred.class && pred.confidence !== undefined ? (
-                            <div key={`${idx}-${pidx}`}>
+                            <div
+                                key={`${idx}-${pidx}`}
+                                style={{
+                                    color: pred.confidence < 0.5 ? 'red' : 'white',
+                                    fontWeight: pred.confidence < 0.5 ? 'bold' : 'normal'
+                                }}
+                            >
+                                {pred.class}: {(pred.confidence * 100).toFixed(1)}%
+                                {pred.confidence < 0.5 && (
+                                    <span style={{ marginLeft: '0.5rem', fontStyle: 'italic' }}>
+                                        Low confidence in recognition result.
+                                    </span>
+                                )}
+                            </div>
+                        ) : null
+                    )
+                    : null
+            );
+        }
+        return null;
+    };
+
+    // -----------------------------------------------------------------------------------
+    // Helper: render predictions in the log (low-confidence letters in red)
+    // -----------------------------------------------------------------------------------
+    const renderLogPrediction = (prediction) => {
+        if (Array.isArray(prediction)) {
+            return prediction.map((item, idx) =>
+                item.predictions && item.predictions.predictions
+                    ? item.predictions.predictions.map((pred, pidx) =>
+                        pred.class && pred.confidence !== undefined ? (
+                            <div
+                                key={`${idx}-${pidx}`}
+                                style={{
+                                    color: pred.confidence < 0.5 ? 'red' : 'white'
+                                }}
+                            >
                                 {pred.class}: {(pred.confidence * 100).toFixed(1)}%
                             </div>
                         ) : null
@@ -165,11 +201,11 @@ export default function ImageTranslate() {
                 {/* Show error message */}
                 {error && <p style={{ color: 'red' }}>{error}</p>}
 
-                {/* Show prediction result */}
+                {/* Show current prediction result */}
                 {prediction && (
                     <div style={{ marginTop: '1rem' }}>
                         <h3>Prediction:</h3>
-                        {renderPrediction(prediction)}
+                        {renderCurrentPrediction(prediction)}
                     </div>
                 )}
             </div>
@@ -255,7 +291,7 @@ export default function ImageTranslate() {
                                     {entry.timestamp}
                                 </div>
                                 <div>
-                                    {renderPrediction(entry.prediction)}
+                                    {renderLogPrediction(entry.prediction)}
                                 </div>
                             </div>
                         ))}

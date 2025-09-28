@@ -12,7 +12,7 @@ export default function ImageTranslate() {
     // -----------------------------------------------------------------------------------
     const [file, setFile] = useState(null);               // The selected file object
     const [previewUrl, setPreviewUrl] = useState(null);   // URL to preview the selected image
-    const [prediction, setPrediction] = useState(null);   // Received prediction result from backend
+    const [prediction, setPrediction] = useState(null);   // Received prediction result from backend (highest confidence)
     const [loading, setLoading] = useState(false);        // Loading flag during API call
     const [error, setError] = useState(null);             // Error message, if any
     const [log, setLog] = useState([]);                   // Log of past translations
@@ -28,7 +28,6 @@ export default function ImageTranslate() {
         if (selectedFile) {
             const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
             if (!validTypes.includes(selectedFile.type)) {
-                // Invalid file type → reset and show error
                 setFile(null);
                 setPreviewUrl(null);
                 setError('Invalid file type. Please upload a PNG or JPG image.');
@@ -38,7 +37,6 @@ export default function ImageTranslate() {
             const url = URL.createObjectURL(selectedFile);
             setPreviewUrl(url);
         } else {
-            // No file selected → clear state
             setFile(null);
             setPreviewUrl(null);
         }
@@ -68,18 +66,42 @@ export default function ImageTranslate() {
             const response = await axios.post(
                 'http://127.0.0.1:8000/image/predict',
                 formData,
-                {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                }
+                { headers: { 'Content-Type': 'multipart/form-data' } }
             );
-            console.log('Backend response:', response);
-            setPrediction(response.data);
+            const data = response.data;
+
+            // -----------------------------------------------------------------------------------
+            // Log all predictions for debugging
+            // -----------------------------------------------------------------------------------
+            const allPredictions = [];
+            if (Array.isArray(data)) {
+                data.forEach(item => {
+                    if (item.predictions && item.predictions.predictions) {
+                        item.predictions.predictions.forEach(pred => {
+                            allPredictions.push(pred);
+                        });
+                    }
+                });
+            }
+            console.log('All predictions:', allPredictions);
+
+            // -----------------------------------------------------------------------------------
+            // Extract highest confidence prediction only
+            // -----------------------------------------------------------------------------------
+            let highestPred = null;
+            allPredictions.forEach(pred => {
+                if (!highestPred || pred.confidence > highestPred.confidence) {
+                    highestPred = pred;
+                }
+            });
+
+            setPrediction(highestPred);
 
             // Add this translation to the log (keep only the last 10 entries)
             setLog((prevLog) => {
                 const newEntry = {
                     imageUrl: previewUrl,
-                    prediction: response.data,
+                    prediction: highestPred,
                     timestamp: new Date().toLocaleString(),
                 };
                 const updatedLog = [newEntry, ...prevLog];
@@ -116,59 +138,17 @@ export default function ImageTranslate() {
     };
 
     // -----------------------------------------------------------------------------------
-    // Helper: render current prediction (with low-confidence warning)
+    // Helper: render prediction (highest confidence) with red warning for <50%
     // -----------------------------------------------------------------------------------
-    const renderCurrentPrediction = (prediction) => {
-        if (Array.isArray(prediction)) {
-            return prediction.map((item, idx) =>
-                item.predictions && item.predictions.predictions
-                    ? item.predictions.predictions.map((pred, pidx) =>
-                        pred.class && pred.confidence !== undefined ? (
-                            <div
-                                key={`${idx}-${pidx}`}
-                                style={{
-                                    color: pred.confidence < 0.5 ? 'red' : 'white',
-                                    fontWeight: pred.confidence < 0.5 ? 'bold' : 'normal'
-                                }}
-                            >
-                                {pred.class}: {(pred.confidence * 100).toFixed(1)}%
-                                {pred.confidence < 0.5 && (
-                                    <span style={{ marginLeft: '0.5rem', fontStyle: 'italic' }}>
-                                        Low confidence in recognition result.
-                                    </span>
-                                )}
-                            </div>
-                        ) : null
-                    )
-                    : null
-            );
-        }
-        return null;
-    };
-
-    // -----------------------------------------------------------------------------------
-    // Helper: render predictions in the log (low-confidence letters in red)
-    // -----------------------------------------------------------------------------------
-    const renderLogPrediction = (prediction) => {
-        if (Array.isArray(prediction)) {
-            return prediction.map((item, idx) =>
-                item.predictions && item.predictions.predictions
-                    ? item.predictions.predictions.map((pred, pidx) =>
-                        pred.class && pred.confidence !== undefined ? (
-                            <div
-                                key={`${idx}-${pidx}`}
-                                style={{
-                                    color: pred.confidence < 0.5 ? 'red' : 'white'
-                                }}
-                            >
-                                {pred.class}: {(pred.confidence * 100).toFixed(1)}%
-                            </div>
-                        ) : null
-                    )
-                    : null
-            );
-        }
-        return null;
+    const renderPrediction = (pred) => {
+        if (!pred || !pred.class || pred.confidence === undefined) return null;
+        const lowConfidence = pred.confidence < 0.5;
+        return (
+            <div style={{ color: lowConfidence ? 'red' : 'white' }}>
+                {pred.class}: {(pred.confidence * 100).toFixed(1)}%
+                {lowConfidence && ' — Low confidence in recognition result.'}
+            </div>
+        );
     };
 
     // -----------------------------------------------------------------------------------
@@ -201,11 +181,11 @@ export default function ImageTranslate() {
                 {/* Show error message */}
                 {error && <p style={{ color: 'red' }}>{error}</p>}
 
-                {/* Show current prediction result */}
+                {/* Show highest confidence prediction result */}
                 {prediction && (
                     <div style={{ marginTop: '1rem' }}>
                         <h3>Prediction:</h3>
-                        {renderCurrentPrediction(prediction)}
+                        {renderPrediction(prediction)}
                     </div>
                 )}
             </div>
@@ -291,7 +271,7 @@ export default function ImageTranslate() {
                                     {entry.timestamp}
                                 </div>
                                 <div>
-                                    {renderLogPrediction(entry.prediction)}
+                                    {renderPrediction(entry.prediction)}
                                 </div>
                             </div>
                         ))}

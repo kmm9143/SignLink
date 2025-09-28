@@ -13,125 +13,81 @@
 #               [8] Warchocki, J., Vlasenko, M., & Eisma, Y. B. (2023, October 23). GRLib: An open-source hand gesture detection and recognition python library. arXiv. Retrieved September 19, 2025, from https://arxiv.org/abs/2310.14919
 #               [9] Gautam, A. (2024). Hand recognition using OpenCV & MediaPipe. Medium. Retrieved September 19, 2025, from https://medium.com/aditee-gautam/hand-recognition-using-opencv-a7b109941c88
 
-# -----------------------------------------------------------------------------------
-# Step 1: Import required libraries and modules
-# -----------------------------------------------------------------------------------
-from fastapi import APIRouter, UploadFile, File                        # FastAPI router and file upload support
-from fastapi.responses import JSONResponse                             # For returning JSON responses
-import tempfile                                                        # For creating temporary files
-import os                                                              # For environment variables and file operations
-from inference_sdk import InferenceHTTPClient                          # Roboflow Inference client for API calls
+from fastapi import APIRouter, UploadFile, File
+from fastapi.responses import JSONResponse
+from inference_sdk import InferenceHTTPClient
+import cv2, mediapipe as mp
+import numpy as np
+import io
+from PIL import Image
+import os
 
-# Extra imports for preprocessing
-import cv2                                                             # OpenCV for image manipulation
-import mediapipe as mp                                                 # MediaPipe for hand detection
+router = APIRouter(prefix="/image", tags=["image"])
 
-# -----------------------------------------------------------------------------------
-# Step 2: Initialize API router and Roboflow client
-# -----------------------------------------------------------------------------------
-router = APIRouter(prefix="/image", tags=["image"])                    # Create router for image endpoints
-
-ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "OrkdRhEVTGpAqU13RVg0") # Get Roboflow API key from environment or use default
-WORKSPACE = "sweng894"                                                 # Roboflow workspace name
-WORKFLOW_ID = "asl-alphabet"                                           # Roboflow workflow ID
+ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "OrkdRhEVTGpAqU13RVg0")
+WORKSPACE = "sweng894"
+WORKFLOW_ID = "asl-alphabet"
 
 client = InferenceHTTPClient(
-    api_url="https://serverless.roboflow.com",                         # Roboflow inference API endpoint
-    api_key=ROBOFLOW_API_KEY                                           # Roboflow API key
+    api_url="https://serverless.roboflow.com",
+    api_key=ROBOFLOW_API_KEY
 )
 
-# -----------------------------------------------------------------------------------
-# Step 3: MediaPipe Hand Preprocessing Function
-# -----------------------------------------------------------------------------------
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
     static_image_mode=True,
     max_num_hands=1,
-    min_detection_confidence=0.3  # relaxed sensitivity
+    min_detection_confidence=0.5
 )
 
-drawing_utils = mp.solutions.drawing_utils
+def preprocess_with_mediapipe_bytes(image_bytes: bytes):
+    """Run MediaPipe on uploaded image bytes and return cropped PIL.Image."""
+    # Decode bytes -> np.array
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-def preprocess_with_mediapipe(image_path: str) -> str:
-    """
-    Detects a hand in the image using MediaPipe and crops the bounding box.
-    Saves an overlay for debugging.
-    Returns the path of the cropped image, or the original if no hand detected.
-    """
-    try:
-        image = cv2.imread(image_path)
-        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    h, w, _ = frame.shape
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = hands.process(rgb)
 
-        results = hands.process(rgb)
+    if not results.multi_hand_landmarks:
+        print("[DEBUG] No hand detected, sending original image")
+        return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
-        if not results.multi_hand_landmarks:
-            print(f"[DEBUG] No hand detected in {image_path}, sending original image")
-            return image_path
+    lm = results.multi_hand_landmarks[0].landmark
+    x_min = int(min(l.x for l in lm) * w)
+    x_max = int(max(l.x for l in lm) * w)
+    y_min = int(min(l.y for l in lm) * h)
+    y_max = int(max(l.y for l in lm) * h)
 
-        # Get bounding box from hand landmarks
-        h, w, _ = image.shape
-        hand = results.multi_hand_landmarks[0]
+    pad = 20
+    x_min, y_min = max(0, x_min - pad), max(0, y_min - pad)
+    x_max, y_max = min(w, x_max + pad), min(h, y_max + pad)
 
-        x_min = min([lm.x for lm in hand.landmark]) * w
-        y_min = min([lm.y for lm in hand.landmark]) * h
-        x_max = max([lm.x for lm in hand.landmark]) * w
-        y_max = max([lm.y for lm in hand.landmark]) * h
+    if x_max <= x_min or y_max <= y_min:
+        print("[DEBUG] Invalid crop, using original")
+        return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
-        # Crop safely (clamp to image size)
-        x_min, y_min = max(int(x_min), 0), max(int(y_min), 0)
-        x_max, y_max = min(int(x_max), w), min(int(y_max), h)
+    cropped = frame[y_min:y_max, x_min:x_max]
+    return Image.fromarray(cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB))
 
-        cropped = image[y_min:y_max, x_min:x_max]
-
-        # Save cropped version
-        cropped_path = image_path.replace(".jpg", "_cropped.jpg")
-        cv2.imwrite(cropped_path, cropped)
-
-        # Save debug overlay with landmarks drawn
-        for hand_landmarks in results.multi_hand_landmarks:
-            drawing_utils.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-        overlay_path = image_path.replace(".jpg", "_overlay.jpg")
-        cv2.imwrite(overlay_path, image)
-
-        print(f"[DEBUG] Hand detected, cropped image saved at {cropped_path}")
-        print(f"[DEBUG] Overlay with landmarks saved at {overlay_path}")
-
-        return cropped_path
-
-    except Exception as e:
-        print(f"[DEBUG] Preprocessing failed: {e}, sending original image")
-        return image_path
-
-# -----------------------------------------------------------------------------------
-# Step 4: Define image prediction endpoint
-# -----------------------------------------------------------------------------------
 @router.post("/predict")
 async def predict_image(file: UploadFile = File(...)):
-    """
-    Predict ASL letter from uploaded image with MediaPipe preprocessing.
-    """
+    """Predict ASL letter from uploaded image using in-memory MediaPipe preprocessing."""
     try:
-        # Save uploaded image temporarily
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_file:
-            tmp_file.write(await file.read())
-            temp_path = tmp_file.name
+        # Read file into memory
+        contents = await file.read()
 
-        # Run preprocessing step
-        cropped_path = preprocess_with_mediapipe(temp_path)
+        # Preprocess with MediaPipe -> cropped PIL.Image
+        cropped_img = preprocess_with_mediapipe_bytes(contents)
 
-        # Run Roboflow workflow for ASL prediction
+        # Send to Roboflow directly
         result = client.run_workflow(
             workspace_name=WORKSPACE,
             workflow_id=WORKFLOW_ID,
-            images={"image": cropped_path},
+            images={"image": cropped_img},
             use_cache=True
         )
-
-        # Cleanup (keep overlay for debug, remove temp + cropped)
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-        if cropped_path != temp_path and os.path.exists(cropped_path):
-            os.remove(cropped_path)
 
         return JSONResponse(content=result)
 

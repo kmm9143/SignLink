@@ -1,7 +1,7 @@
 # DESCRIPTION:  This script provides an API endpoint for ASL (American Sign Language) image classification.
-#               It accepts an uploaded image, saves it temporarily, and sends it to a Roboflow Inference API
-#               for ASL alphabet prediction. The prediction result is returned as JSON for integration with
-#               frontend or other services.
+#               It accepts an uploaded image, preprocesses it using MediaPipe to crop the hand region, and
+#               then sends the cropped image to a Roboflow Inference API for ASL alphabet prediction.
+#               The prediction result is returned as JSON for integration with frontend or other services.
 # LANGUAGE:     PYTHON
 # SOURCE(S):    [1] GeeksforGeeks. (2023, January 10). Face and hand landmarks detection using Python - Mediapipe, OpenCV. GeeksforGeeks. Retrieved September 19, 2025, from https://www.geeksforgeeks.org/machine-learning/face-and-hand-landmarks-detection-using-python-mediapipe-opencv/
 #               [2] Google. (n.d.). MediaPipe Hands. MediaPipe. Retrieved September 19, 2025, from https://mediapipe.readthedocs.io/en/latest/solutions/hands.html
@@ -13,75 +13,99 @@
 #               [8] Warchocki, J., Vlasenko, M., & Eisma, Y. B. (2023, October 23). GRLib: An open-source hand gesture detection and recognition python library. arXiv. Retrieved September 19, 2025, from https://arxiv.org/abs/2310.14919
 #               [9] Gautam, A. (2024). Hand recognition using OpenCV & MediaPipe. Medium. Retrieved September 19, 2025, from https://medium.com/aditee-gautam/hand-recognition-using-opencv-a7b109941c88
 
-from fastapi import APIRouter, UploadFile, File
-from fastapi.responses import JSONResponse
-from inference_sdk import InferenceHTTPClient
-import cv2, mediapipe as mp
-import numpy as np
-import io
-from PIL import Image
-import os
+# -----------------------------------------------------------------------------------
+# Step 1: Import required libraries and modules
+# -----------------------------------------------------------------------------------
+from fastapi import APIRouter, UploadFile, File                     # FastAPI tools for routing and file handling
+from fastapi.responses import JSONResponse                          # For returning JSON API responses
+from inference_sdk import InferenceHTTPClient                       # Roboflow inference client
+import cv2, mediapipe as mp                                          # OpenCV for image handling, MediaPipe for hand detection
+import numpy as np                                                   # For array manipulation
+import io                                                            # Input/output byte stream utilities
+from PIL import Image                                                # For image processing
+import os                                                            # For environment variable handling
 
-router = APIRouter(prefix="/image", tags=["image"])
+# -----------------------------------------------------------------------------------
+# Step 2: Configure FastAPI router
+# -----------------------------------------------------------------------------------
+router = APIRouter(prefix="/image", tags=["image"])                 # Define API router with "/image" prefix
 
-ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "OrkdRhEVTGpAqU13RVg0")
-WORKSPACE = "sweng894"
-WORKFLOW_ID = "asl-alphabet"
+# -----------------------------------------------------------------------------------
+# Step 3: Set up Roboflow API client
+# -----------------------------------------------------------------------------------
+ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "OrkdRhEVTGpAqU13RVg0")  # Load API key from environment variable
+WORKSPACE = "sweng894"                                              # Roboflow workspace name
+WORKFLOW_ID = "asl-alphabet"                                        # Workflow ID for ASL alphabet prediction
 
-client = InferenceHTTPClient(
+client = InferenceHTTPClient(                                       # Initialize Roboflow inference client
     api_url="https://serverless.roboflow.com",
     api_key=ROBOFLOW_API_KEY
 )
 
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(
+# -----------------------------------------------------------------------------------
+# Step 4: Initialize MediaPipe hand detector
+# -----------------------------------------------------------------------------------
+mp_hands = mp.solutions.hands                                       # Load MediaPipe hands solution
+hands = mp_hands.Hands(                                             # Configure for static image mode
     static_image_mode=True,
     max_num_hands=1,
     min_detection_confidence=0.5
 )
 
+# -----------------------------------------------------------------------------------
+# Step 5: Preprocessing function (crop hand region with MediaPipe)
+# -----------------------------------------------------------------------------------
 def preprocess_with_mediapipe_bytes(image_bytes: bytes):
     """Run MediaPipe on uploaded image bytes and return cropped PIL.Image."""
-    # Decode bytes -> np.array
+    # Decode uploaded bytes into OpenCV image
     nparr = np.frombuffer(image_bytes, np.uint8)
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
+    # Convert to RGB (MediaPipe expects RGB)
     h, w, _ = frame.shape
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(rgb)
 
+    # If no hand detected, return original image
     if not results.multi_hand_landmarks:
         print("[DEBUG] No hand detected, sending original image")
         return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
+    # Extract bounding box around detected hand
     lm = results.multi_hand_landmarks[0].landmark
     x_min = int(min(l.x for l in lm) * w)
     x_max = int(max(l.x for l in lm) * w)
     y_min = int(min(l.y for l in lm) * h)
     y_max = int(max(l.y for l in lm) * h)
 
+    # Add padding around cropped region
     pad = 20
     x_min, y_min = max(0, x_min - pad), max(0, y_min - pad)
     x_max, y_max = min(w, x_max + pad), min(h, y_max + pad)
 
+    # Fallback to original image if bounding box is invalid
     if x_max <= x_min or y_max <= y_min:
         print("[DEBUG] Invalid crop, using original")
         return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
+    # Crop and return as PIL image
     cropped = frame[y_min:y_max, x_min:x_max]
     return Image.fromarray(cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB))
 
+# -----------------------------------------------------------------------------------
+# Step 6: Define API endpoint for prediction
+# -----------------------------------------------------------------------------------
 @router.post("/predict")
 async def predict_image(file: UploadFile = File(...)):
-    """Predict ASL letter from uploaded image using in-memory MediaPipe preprocessing."""
+    """Predict ASL letter from uploaded image using MediaPipe preprocessing and Roboflow model."""
     try:
-        # Read file into memory
+        # Read uploaded file into memory
         contents = await file.read()
 
-        # Preprocess with MediaPipe -> cropped PIL.Image
+        # Preprocess image with MediaPipe (hand cropping)
         cropped_img = preprocess_with_mediapipe_bytes(contents)
 
-        # Send to Roboflow directly
+        # Send cropped image to Roboflow workflow for prediction
         result = client.run_workflow(
             workspace_name=WORKSPACE,
             workflow_id=WORKFLOW_ID,
@@ -89,7 +113,9 @@ async def predict_image(file: UploadFile = File(...)):
             use_cache=True
         )
 
+        # Return prediction result as JSON
         return JSONResponse(content=result)
 
     except Exception as e:
+        # Return error details if something goes wrong
         return JSONResponse(content={"error": str(e)}, status_code=500)

@@ -1,13 +1,25 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+﻿// DESCRIPTION:  This React component streams webcam video, sends frames to a backend WebSocket server,
+//               and displays both annotated output (drawn on canvas) and live predictions of ASL signs.
+//               It maintains the connection state, handles cleanup on unmount, and shows the top prediction.
+// LANGUAGE:     JAVASCRIPT / React (hooks, WebSocket API, HTML5 video & canvas)
+
+import React, { useEffect, useRef, useState } from "react";
 
 const WebcamTranslator = () => {
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const wsRef = useRef(null);
-    const [prediction, setPrediction] = useState(null);
-    const [connected, setConnected] = useState(false);
+    // -----------------------------------------------------------------------------------
+    // References & State
+    // -----------------------------------------------------------------------------------
+    const videoRef = useRef(null);       // DOM ref for webcam video element
+    const canvasRef = useRef(null);      // DOM ref for annotated canvas
+    const wsRef = useRef(null);          // WebSocket connection reference
+    const [prediction, setPrediction] = useState(null);  // latest prediction from backend
+    const [setConnected] = useState(false);              // connection status (true/false)
 
+    // -----------------------------------------------------------------------------------
+    // Effect: Start webcam & establish WebSocket connection on mount
+    // -----------------------------------------------------------------------------------
     useEffect(() => {
+        // Request webcam access
         const startWebcam = async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -16,32 +28,34 @@ const WebcamTranslator = () => {
                 console.error("Webcam access denied:", err);
             }
         };
-
         startWebcam();
 
+        // Connect to backend WebSocket server
         const ws = new WebSocket("ws://localhost:8000/webcam/ws");
         wsRef.current = ws;
 
+        // Handle open/close events
         ws.onopen = () => {
             setConnected(true);
             console.log("[WS] Connected");
         };
-
         ws.onclose = () => {
             setConnected(false);
             console.log("[WS] Disconnected");
         };
 
+        // Handle incoming messages (string JSON or binary image frames)
         ws.onmessage = (event) => {
             if (typeof event.data === "string") {
+                // Text → JSON prediction
                 try {
                     const msg = JSON.parse(event.data);
                     if (msg.prediction) setPrediction(msg.prediction);
                 } catch {
-                    // ignore malformed text messages
+                    // Ignore malformed messages
                 }
             } else {
-                // binary annotated frame
+                // Binary → annotated frame (image blob)
                 const img = new Image();
                 img.onload = () => {
                     const ctx = canvasRef.current.getContext("2d");
@@ -52,9 +66,9 @@ const WebcamTranslator = () => {
             }
         };
 
+        // Cleanup on unmount: close socket + stop webcam tracks
         return () => {
             if (wsRef.current) wsRef.current.close();
-            // stop webcam tracks when unmounting
             if (videoRef.current && videoRef.current.srcObject) {
                 const tracks = videoRef.current.srcObject.getTracks();
                 tracks.forEach((t) => t.stop());
@@ -62,15 +76,19 @@ const WebcamTranslator = () => {
         };
     }, []);
 
-    // Send frame every 500ms
+    // -----------------------------------------------------------------------------------
+    // Effect: Periodically send frames to backend (every 500ms)
+    // -----------------------------------------------------------------------------------
     useEffect(() => {
         const interval = setInterval(() => {
             if (videoRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+                // Draw current video frame to an offscreen canvas
                 const canvas = document.createElement("canvas");
                 canvas.width = videoRef.current.videoWidth || 640;
                 canvas.height = videoRef.current.videoHeight || 480;
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(videoRef.current, 0, 0);
+                // Convert to compressed JPEG data URL and send
                 const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
                 wsRef.current.send(dataUrl);
             }
@@ -79,6 +97,9 @@ const WebcamTranslator = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // -----------------------------------------------------------------------------------
+    // Helper: Render top prediction (class + confidence)
+    // -----------------------------------------------------------------------------------
     const renderPrediction = () => {
         if (!prediction) return "None";
         try {
@@ -92,17 +113,19 @@ const WebcamTranslator = () => {
         }
     };
 
-    // Inline styles to force side-by-side layout regardless of global CSS
+    // -----------------------------------------------------------------------------------
+    // Inline Styles for layout (side-by-side video & canvas)
+    // -----------------------------------------------------------------------------------
     const rowStyle = {
         display: "flex",
         flexDirection: "row",
         gap: "24px",
         alignItems: "flex-start",
-        flexWrap: "nowrap",       // prevent wrapping into vertical stack
-        overflowX: "auto",       // allow horizontal scroll on small screens
+        flexWrap: "nowrap",       // keep side-by-side layout
+        overflowX: "auto",        // allow horizontal scroll on smaller screens
     };
     const paneStyle = {
-        flex: "0 0 auto",        // don't shrink, fixed width set on children
+        flex: "0 0 auto",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -116,6 +139,9 @@ const WebcamTranslator = () => {
         background: "#000",
     };
 
+    // -----------------------------------------------------------------------------------
+    // Render UI: Webcam feed, annotated output, and prediction text
+    // -----------------------------------------------------------------------------------
     return (
         <div style={{ padding: "16px" }}>
             <div style={rowStyle}>
@@ -142,7 +168,7 @@ const WebcamTranslator = () => {
                 </div>
             </div>
 
-            {/* Prediction below */}
+            {/* Prediction (below video/canvas) */}
             <div style={{ marginTop: "16px" }}>
                 <strong>Prediction:</strong> {renderPrediction()}
             </div>

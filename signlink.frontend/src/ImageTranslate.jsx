@@ -1,14 +1,25 @@
+﻿// DESCRIPTION:  This component implements the frontend for image-based ASL (American Sign Language) translation.
+//               It lets a user upload an image, previews it, sends it to a backend API for classification, and
+//               displays the predicted ASL letter(s) with confidence. It also keeps a log of recent translations.
+// LANGUAGE:     JAVASCRIPT / React (using functional components, hooks, and axios for HTTP requests)
+
 import { useState } from 'react';
 import axios from 'axios';
 
 export default function ImageTranslate() {
-    const [file, setFile] = useState(null);
-    const [previewUrl, setPreviewUrl] = useState(null);
-    const [prediction, setPrediction] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [log, setLog] = useState([]);
+    // -----------------------------------------------------------------------------------
+    // Step: React state declarations
+    // -----------------------------------------------------------------------------------
+    const [file, setFile] = useState(null);               // The selected file object
+    const [previewUrl, setPreviewUrl] = useState(null);   // URL to preview the selected image
+    const [prediction, setPrediction] = useState(null);   // Received prediction result from backend
+    const [loading, setLoading] = useState(false);        // Loading flag during API call
+    const [error, setError] = useState(null);             // Error message, if any
+    const [log, setLog] = useState([]);                   // Log of past translations
 
+    // -----------------------------------------------------------------------------------
+    // Handler: when user selects (or changes) an image file
+    // -----------------------------------------------------------------------------------
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         setPrediction(null);
@@ -17,6 +28,7 @@ export default function ImageTranslate() {
         if (selectedFile) {
             const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
             if (!validTypes.includes(selectedFile.type)) {
+                // Invalid file type → reset and show error
                 setFile(null);
                 setPreviewUrl(null);
                 setError('Invalid file type. Please upload a PNG or JPG image.');
@@ -26,12 +38,16 @@ export default function ImageTranslate() {
             const url = URL.createObjectURL(selectedFile);
             setPreviewUrl(url);
         } else {
+            // No file selected → clear state
             setFile(null);
             setPreviewUrl(null);
         }
         console.log('Selected file:', selectedFile);
     };
 
+    // -----------------------------------------------------------------------------------
+    // Handler: when user clicks “Translate” / submit
+    // -----------------------------------------------------------------------------------
     const handleSubmit = async () => {
         if (!file) {
             setError('Please select an image first.');
@@ -59,7 +75,7 @@ export default function ImageTranslate() {
             console.log('Backend response:', response);
             setPrediction(response.data);
 
-            // Add to log (keep only last 10)
+            // Add this translation to the log (keep only the last 10 entries)
             setLog((prevLog) => {
                 const newEntry = {
                     imageUrl: previewUrl,
@@ -85,15 +101,23 @@ export default function ImageTranslate() {
         }
     };
 
+    // -----------------------------------------------------------------------------------
+    // Handler: clear the translation log entirely
+    // -----------------------------------------------------------------------------------
     const handleClearLog = () => {
         setLog([]);
     };
 
+    // -----------------------------------------------------------------------------------
+    // Handler: remove a specific log entry by index
+    // -----------------------------------------------------------------------------------
     const handleRemoveLogEntry = (idxToRemove) => {
         setLog((prevLog) => prevLog.filter((_, idx) => idx !== idxToRemove));
     };
 
-    // Helper to render predictions in the log
+    // -----------------------------------------------------------------------------------
+    // Helper: render predictions (with class + confidence) from received data
+    // -----------------------------------------------------------------------------------
     const renderPrediction = (prediction) => {
         if (Array.isArray(prediction)) {
             return prediction.map((item, idx) =>
@@ -111,9 +135,13 @@ export default function ImageTranslate() {
         return null;
     };
 
+    // -----------------------------------------------------------------------------------
+    // Render the UI
+    // -----------------------------------------------------------------------------------
     return (
         <div style={{ padding: '2rem', display: 'flex', alignItems: 'flex-start' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
+                {/* File input and Translate button */}
                 <input type="file" accept="image/*" onChange={handleFileChange} />
                 <button
                     onClick={handleSubmit}
@@ -123,6 +151,7 @@ export default function ImageTranslate() {
                     {loading ? 'Translating...' : 'Translate'}
                 </button>
 
+                {/* Preview of selected image */}
                 {previewUrl && (
                     <div style={{ marginTop: '1rem' }}>
                         <img
@@ -133,8 +162,10 @@ export default function ImageTranslate() {
                     </div>
                 )}
 
+                {/* Show error message */}
                 {error && <p style={{ color: 'red' }}>{error}</p>}
 
+                {/* Show prediction result */}
                 {prediction && (
                     <div style={{ marginTop: '1rem' }}>
                         <h3>Prediction:</h3>
@@ -143,6 +174,7 @@ export default function ImageTranslate() {
                 )}
             </div>
 
+            {/* Translation log (if any) */}
             {log.length > 0 && (
                 <div style={{
                     marginLeft: '2rem',
@@ -215,7 +247,7 @@ export default function ImageTranslate() {
                                         title="Remove this entry"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24">
-                                            <path fill="currentColor" d="M7 21a2 2 0 0 1-2-2V7H3V5h5V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1h5v2h-2v12a2 2 0 0 1-2 2H7zm10-14H7v12h10V7zm-6 2h2v8h-2V9z"/>
+                                            <path fill="currentColor" d="M7 21a2 2 0 0 1-2-2V7H3V5h5V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1h5v2h-2v12a2 2 a 0 0 1-2 2H7zm10-14H7v12h10V7zm-6 2h2v8h-2V9z" />
                                         </svg>
                                     </button>
                                 </div>

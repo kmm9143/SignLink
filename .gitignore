@@ -29,3 +29,4 @@ data/
 C:/Datasets/
 *.zip
 *.tar.gz
+/SignLink.API/utils/.env

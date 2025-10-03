@@ -13,9 +13,9 @@ from inference_sdk import InferenceHTTPClient   # Roboflow SDK client for making
 # -------------------------------------------------------------------
 # Step 2: Configure Roboflow API credentials and workflow
 # -------------------------------------------------------------------
-ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "OrkdRhEVTGpAqU13RVg0")  # Load API key from environment or default
-WORKSPACE = "sweng894"                                                     # Workspace name on Roboflow
-WORKFLOW_ID = "asl-alphabet"                                               # Workflow ID for ASL alphabet prediction
+ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY")  # Load API key from environment or default
+WORKSPACE = "sweng894"                            # Workspace name on Roboflow
+WORKFLOW_ID = "asl-alphabet"                      # Workflow ID for ASL alphabet prediction
 
 # -------------------------------------------------------------------
 # Step 3: Initialize Roboflow Inference Client

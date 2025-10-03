@@ -8,12 +8,16 @@
 # Step 1: Import required libraries
 # -------------------------------------------------------------------
 import os
+from dotenv import load_dotenv                  # Load environment variables from .env file
 from inference_sdk import InferenceHTTPClient   # Roboflow SDK client for making inference requests
 
 # -------------------------------------------------------------------
 # Step 2: Configure Roboflow API credentials and workflow
 # -------------------------------------------------------------------
-ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY")  # Load API key from environment or default
+project_root = os.path.dirname(os.path.dirname(__file__))  # utils/ -> project root
+env_path = os.path.join(project_root, ".env")
+load_dotenv(env_path, override=True)
+ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "")
 WORKSPACE = "sweng894"                            # Workspace name on Roboflow
 WORKFLOW_ID = "asl-alphabet"                      # Workflow ID for ASL alphabet prediction
 

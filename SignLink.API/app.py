@@ -23,6 +23,8 @@ from translate_image import router as image_router                  # Import ima
 from translate_video import router as video_router                  # Import video translation router
 from translate_webcam import router as webcam_router                # Import webcam translation router
 
+from routers.settings import router as settings_router  
+from database import engine, Base
 # -----------------------------------------------------------------------------------
 # Step 2: Initialize FastAPI application
 # -----------------------------------------------------------------------------------
@@ -44,9 +46,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+Base.metadata.create_all(bind=engine)
+
 # -----------------------------------------------------------------------------------
 # Step 4: Include API routers for different translation modes
 # -----------------------------------------------------------------------------------
 app.include_router(image_router)                                    # Add image translation endpoints
 app.include_router(video_router)                                    # Add video translation endpoints
 app.include_router(webcam_router)                                   # Add webcam translation endpoints
+app.include_router(settings_router)                                 # Add user settings endpoints
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

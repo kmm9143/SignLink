@@ -16,14 +16,15 @@
 # -----------------------------------------------------------------------------------
 # Step 1: Import required libraries and modules
 # -----------------------------------------------------------------------------------
-from fastapi import FastAPI                                         # Import FastAPI for building the API server
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect         # Import FastAPI for building the API server
 from fastapi.middleware.cors import CORSMiddleware                  # Import CORS middleware for cross-origin requests
 
-from translate_image import router as image_router                  # Import image translation router
-from translate_video import router as video_router                  # Import video translation router
-from translate_webcam import router as webcam_router                # Import webcam translation router
+from routers.translate_image import router as image_router                  # Import image translation router
+from routers.translate_video import router as video_router                  # Import video translation router
+from routers.translate_webcam import router as webcam_router                # Import webcam translation router
+from routers.settings import router as settings_router
+from routers.auth import router as auth_router
 
-from routers.settings import router as settings_router  
 from database import engine, Base
 # -----------------------------------------------------------------------------------
 # Step 2: Initialize FastAPI application
@@ -46,16 +47,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-Base.metadata.create_all(bind=engine)
-
 # -----------------------------------------------------------------------------------
 # Step 4: Include API routers for different translation modes
 # -----------------------------------------------------------------------------------
-app.include_router(image_router)                                    # Add image translation endpoints
-app.include_router(video_router)                                    # Add video translation endpoints
-app.include_router(webcam_router)                                   # Add webcam translation endpoints
-app.include_router(settings_router)                                 # Add user settings endpoints
+app.include_router(image_router)                                # image translation
+app.include_router(video_router)                                # video translation
+app.include_router(webcam_router)                               # webcam translation
+app.include_router(settings_router)                             # user settings
+app.include_router(auth_router, prefix="/auth", tags=["auth"])  # authentication
 
+# -----------------------------------------------------------------------------------
+# Step 5: Health Check Endpoint
+# -----------------------------------------------------------------------------------
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+# -----------------------------------------------------------------------------------
+# Step 6: WebSocket Endpoint for Real-time Webcam Translation
+# -----------------------------------------------------------------------------------
+@app.websocket("/webcam/ws")
+async def webcam_ws(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()  # Receive data from frontend
+            # For now, just echo it back (you can add ASL prediction later)
+            await websocket.send_text(f"Received: {data}")
+    except WebSocketDisconnect:
+        print("WebSocket client disconnected")

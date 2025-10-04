@@ -23,17 +23,20 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="app.py" />
+    <Compile Include="models\base.py" />
+    <Compile Include="models\user_information.py" />
+    <Compile Include="routers\auth.py" />
     <Compile Include="crud.py" />
     <Compile Include="inference.py" />
     <Compile Include="live_translate.py" />
-    <Compile Include="models\settings.py" />
+    <Compile Include="models\user_settings.py" />
     <Compile Include="routers\settings.py" />
     <Compile Include="tests\test_translate_video.py" />
     <Compile Include="tests\test_translate_webcam.py" />
     <Compile Include="tests\test_translate_image.py" />
-    <Compile Include="translate_image.py" />
-    <Compile Include="translate_video.py" />
-    <Compile Include="translate_webcam.py" />
+    <Compile Include="routers\translate_image.py" />
+    <Compile Include="routers\translate_video.py" />
+    <Compile Include="routers\translate_webcam.py" />
     <Compile Include="database.py" />
     <Compile Include="utils\mediapipe_utils.py" />
     <Compile Include="utils\roboflow_client.py" />

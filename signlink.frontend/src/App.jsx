@@ -1,26 +1,35 @@
-// DESCRIPTION:  This is the top-level React component for the ASL translator app.  
-//               It lets users switch between “Upload Image” mode and “Webcam” mode,  
-//               and conditionally renders the appropriate translator component.  
-// LANGUAGE:     JAVASCRIPT / React (functional components, hooks)
-
 import { useState } from 'react';
 import ImageTranslate from './ImageTranslate.jsx';
 import WebcamTranslate from './WebcamTranslate.jsx';
+import UserSettings from './UserSettings.jsx';
+import Auth from './Auth.jsx';   // login/signup form
 
 export default function App() {
     // -----------------------------------------------------------------------------------
-    // State: which translation mode is active
+    // State
     // -----------------------------------------------------------------------------------
-    const [mode, setMode] = useState('image');  // possible values: 'image' or 'webcam'
+    const [user, setUser] = useState(null);          // logged-in user info (from UserInformation table)
+    const [mode, setMode] = useState('image');       // translation mode
+    const [showSettings, setShowSettings] = useState(false); // toggle settings panel
 
     // -----------------------------------------------------------------------------------
-    // Render UI
+    // If user is not logged in, show Auth component
+    // -----------------------------------------------------------------------------------
+    if (!user) {
+        return <Auth onLogin={(userData) => setUser(userData)} />;
+    }
+
+    // -----------------------------------------------------------------------------------
+    // Render Translator + Settings (once logged in)
     // -----------------------------------------------------------------------------------
     return (
         <div style={{ padding: '2rem' }}>
             <h1>ASL Translator</h1>
+            <p style={{ fontSize: "0.9rem", color: "#666" }}>
+                Logged in as <strong>{user.username}</strong>
+            </p>
 
-            {/* Mode selection buttons */}
+            {/* Top menu buttons */}
             <div style={{ marginBottom: '1rem' }}>
                 <button
                     onClick={() => setMode('image')}
@@ -30,15 +39,35 @@ export default function App() {
                 </button>
                 <button
                     onClick={() => setMode('webcam')}
-                    style={{ backgroundColor: mode === 'webcam' ? '#ccc' : '' }}
+                    style={{ marginRight: '1rem', backgroundColor: mode === 'webcam' ? '#ccc' : '' }}
                 >
                     Webcam
                 </button>
+                <button
+                    onClick={() => setShowSettings(true)}
+                    style={{ float: 'right' }}
+                >
+                    Settings
+                </button>
             </div>
 
-            {/* Conditionally render either the image upload translator or the webcam translator */}
-            {mode === 'image' && <ImageTranslate />}
-            {mode === 'webcam' && <WebcamTranslate />}
+            {/* Conditionally render translator or settings */}
+            {!showSettings && (
+                <>
+                    {mode === 'image' && <ImageTranslate userId={user.id} />}
+                    {mode === 'webcam' && <WebcamTranslate userId={user.id} />}
+                </>
+            )}
+
+            {showSettings && (
+                <div style={{ border: '1px solid #ccc', padding: '1rem', marginTop: '1rem' }}>
+                    {/* Pass the userId to settings so backend can fetch/update UserSettings */}
+                    <UserSettings userId={user.id} />
+                    <button onClick={() => setShowSettings(false)} style={{ marginTop: '1rem' }}>
+                        Close Settings
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

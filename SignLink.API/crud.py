@@ -1,17 +1,39 @@
+# crud.py
 from sqlalchemy.orm import Session
-from models import UserSettings
+from models.user_settings import UserSettings
+from models.user_information import UserInformation
 
-def get_user_settings(db: Session, user_id: str):
-    return db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+def create_or_update_settings(db: Session, user_id: int, speech_enabled: bool, webcam_enabled: bool):
+    """
+    Create or update user settings for a given user_id (foreign key from USER_INFORMATION).
+    """
+    # Make sure the user exists first
+    user = db.query(UserInformation).filter(UserInformation.USER_ID == user_id).first()
+    if not user:
+        raise ValueError(f"User with id {user_id} does not exist")
 
-def create_or_update_settings(db: Session, user_id: str, speech_output: bool, theme: str = "light"):
-    settings = get_user_settings(db, user_id)
+    settings = db.query(UserSettings).filter(UserSettings.USER_ID == user_id).first()
+
     if settings:
-        settings.speech_output = speech_output
-        settings.theme = theme
+        # Update existing
+        settings.SPEECH_ENABLED = speech_enabled
+        settings.WEBCAM_ENABLED = webcam_enabled
     else:
-        settings = UserSettings(user_id=user_id, speech_output=speech_output, theme=theme)
+        # Create new settings linked to this user
+        settings = UserSettings(
+            USER_ID=user_id,
+            SPEECH_ENABLED=speech_enabled,
+            WEBCAM_ENABLED=webcam_enabled,
+        )
         db.add(settings)
+
     db.commit()
     db.refresh(settings)
     return settings
+
+
+def get_settings(db: Session, user_id: int):
+    """
+    Retrieve settings for a given user_id.
+    """
+    return db.query(UserSettings).filter(UserSettings.USER_ID == user_id).first()

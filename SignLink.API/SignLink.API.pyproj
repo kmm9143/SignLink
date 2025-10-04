@@ -27,8 +27,6 @@
     <Compile Include="models\user_information.py" />
     <Compile Include="routers\auth.py" />
     <Compile Include="crud.py" />
-    <Compile Include="inference.py" />
-    <Compile Include="live_translate.py" />
     <Compile Include="models\user_settings.py" />
     <Compile Include="routers\settings.py" />
     <Compile Include="tests\test_translate_video.py" />

@@ -1,26 +1,48 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+﻿// DESCRIPTION:   React component that enables real-time ASL translation
+//                using webcam input. It streams video frames to a backend
+//                WebSocket, receives predictions and annotated frames,
+//                and optionally outputs speech using Text-to-Speech.
+// LANGUAGE:      JAVASCRIPT (React.js)
+// SOURCE(S):     
+//    [1] React Docs. (n.d.). Using the Effect Hook. Retrieved October 5, 2025, from https://react.dev/reference/react/useEffect
+//    [2] React Docs. (n.d.). Refs and the DOM. Retrieved October 5, 2025, from https://react.dev/reference/react/useRef
+//    [3] MDN Web Docs. (n.d.). MediaDevices.getUserMedia(). Retrieved October 5, 2025, from https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+//    [4] MDN Web Docs. (n.d.). WebSocket API. Retrieved October 5, 2025, from https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
 
+// -----------------------------------------------------------------------------
+// Step 1: Import dependencies and helper modules
+// -----------------------------------------------------------------------------
+import React, { useEffect, useRef, useState } from "react"; // React core and hooks
+import { speak } from './utils/speech.js';                 // Local TTS utility
+
+// -----------------------------------------------------------------------------
+// Step 2: Define WebcamTranslator component
+// -----------------------------------------------------------------------------
 const WebcamTranslator = ({ userId = 1 }) => {
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const wsRef = useRef(null);
 
-    const [prediction, setPrediction] = useState(null);
-    const [connected, setConnected] = useState(false);
-    const [settings, setSettings] = useState(null);
+    // -------------------------------------------------------------------------
+    // Step 3: Define refs and state variables
+    // -------------------------------------------------------------------------
+    const videoRef = useRef(null);      // Reference to video element
+    const canvasRef = useRef(null);     // Reference to canvas element
+    const wsRef = useRef(null);         // Reference to WebSocket connection
 
-    // -----------------------------
-    // Fetch settings
-    // -----------------------------
+    const [prediction, setPrediction] = useState(null); // Latest prediction
+    const [connected, setConnected] = useState(false);  // WebSocket connection state
+    const [settings, setSettings] = useState(null);     // User settings from backend
+
+    // -------------------------------------------------------------------------
+    // Step 4: Fetch user settings from backend
+    // -------------------------------------------------------------------------
     useEffect(() => {
         const fetchSettings = async () => {
             try {
                 const res = await fetch(`http://localhost:8000/settings/${userId}`);
                 if (res.ok) {
                     const data = await res.json();
-                    setSettings(data);
+                    setSettings(data); // Store fetched settings
                 } else {
-                    console.warn("No settings found, defaulting to disabled webcam.");
+                    console.warn("No settings found, defaulting to disabled webcam and speech.");
                     setSettings({ WEBCAM_ENABLED: false, SPEECH_ENABLED: false });
                 }
             } catch (err) {
@@ -31,16 +53,14 @@ const WebcamTranslator = ({ userId = 1 }) => {
         fetchSettings();
     }, [userId]);
 
-    // -----------------------------
-    // Webcam + WebSocket setup
-    // -----------------------------
+    // -------------------------------------------------------------------------
+    // Step 5: Setup webcam stream and WebSocket connection
+    // -------------------------------------------------------------------------
     useEffect(() => {
-        if (!settings || !settings.WEBCAM_ENABLED) {
-            console.log("[Webcam] Disabled by settings");
-            return;
-        }
+        if (!settings?.WEBCAM_ENABLED) return;
 
         let stream;
+
         const startWebcam = async () => {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -54,15 +74,8 @@ const WebcamTranslator = ({ userId = 1 }) => {
         const ws = new WebSocket("ws://localhost:8000/webcam/ws");
         wsRef.current = ws;
 
-        ws.onopen = () => {
-            setConnected(true);
-            console.log("[WS] Connected");
-        };
-        ws.onclose = () => {
-            setConnected(false);
-            console.log("[WS] Disconnected");
-        };
-
+        ws.onopen = () => { setConnected(true); console.log("[WS] Connected"); };
+        ws.onclose = () => { setConnected(false); console.log("[WS] Disconnected"); };
         ws.onmessage = (event) => {
             if (typeof event.data === "string") {
                 try {
@@ -81,18 +94,17 @@ const WebcamTranslator = ({ userId = 1 }) => {
         };
 
         return () => {
-            if (wsRef.current) wsRef.current.close();
-            if (stream) {
-                stream.getTracks().forEach((t) => t.stop());
-            }
+            if (wsRef.current) wsRef.current.close();               // Close WebSocket
+            if (stream) stream.getTracks().forEach((t) => t.stop()); // Stop webcam tracks
         };
     }, [settings]);
 
-    // -----------------------------
-    // Frame sending loop
-    // -----------------------------
+    // -------------------------------------------------------------------------
+    // Step 6: Periodically capture webcam frames and send to backend
+    // -------------------------------------------------------------------------
     useEffect(() => {
-        if (!settings || !settings.WEBCAM_ENABLED) return;
+        if (!settings?.WEBCAM_ENABLED) return;
+
         const interval = setInterval(() => {
             if (videoRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
                 const canvas = document.createElement("canvas");
@@ -104,12 +116,30 @@ const WebcamTranslator = ({ userId = 1 }) => {
                 wsRef.current.send(dataUrl);
             }
         }, 500);
+
         return () => clearInterval(interval);
     }, [settings]);
 
-    // -----------------------------
-    // Format prediction (same as before)
-    // -----------------------------
+    // -------------------------------------------------------------------------
+    // Step 7: Trigger Text-to-Speech for top prediction
+    // -------------------------------------------------------------------------
+    useEffect(() => {
+        if (!settings?.SPEECH_ENABLED || !prediction) return;
+
+        try {
+            const parsed = Array.isArray(prediction) ? prediction[0] : prediction;
+            const preds = parsed?.predictions?.predictions || [];
+            if (preds.length === 0) return;
+            const top = preds[0];
+            speak(`Predicted letter is ${top.class}`);
+        } catch {
+            console.warn("Failed to parse prediction for speech output.");
+        }
+    }, [prediction, settings]);
+
+    // -------------------------------------------------------------------------
+    // Step 8: Format prediction text for display
+    // -------------------------------------------------------------------------
     const renderPrediction = () => {
         if (!prediction) return "None";
         try {
@@ -123,16 +153,11 @@ const WebcamTranslator = ({ userId = 1 }) => {
         }
     };
 
-    // -----------------------------
-    // Render
-    // -----------------------------
-    if (!settings) {
-        return <div>Loading settings...</div>;
-    }
-
-    if (!settings.WEBCAM_ENABLED) {
-        return <div>⚠️ Webcam is disabled in your settings.</div>;
-    }
+    // -------------------------------------------------------------------------
+    // Step 9: Render component UI
+    // -------------------------------------------------------------------------
+    if (!settings) return <div>Loading settings...</div>;
+    if (!settings.WEBCAM_ENABLED) return <div>⚠️ Webcam is disabled in your settings.</div>;
 
     return (
         <div style={{ padding: "16px" }}>

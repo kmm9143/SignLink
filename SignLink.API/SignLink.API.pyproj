@@ -29,6 +29,7 @@
     <Compile Include="crud.py" />
     <Compile Include="models\user_settings.py" />
     <Compile Include="routers\settings.py" />
+    <Compile Include="routers\__init__.py" />
     <Compile Include="tests\test_translate_video.py" />
     <Compile Include="tests\test_translate_webcam.py" />
     <Compile Include="tests\test_translate_image.py" />
@@ -36,6 +37,7 @@
     <Compile Include="routers\translate_video.py" />
     <Compile Include="routers\translate_webcam.py" />
     <Compile Include="database.py" />
+    <Compile Include="tests\test_us5_user_settings.py" />
     <Compile Include="utils\mediapipe_utils.py" />
     <Compile Include="utils\roboflow_client.py" />
     <Compile Include="utils\__init__.py" />

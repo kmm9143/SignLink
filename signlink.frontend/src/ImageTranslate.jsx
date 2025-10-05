@@ -1,55 +1,96 @@
-﻿// DESCRIPTION:  This component implements the frontend for image-based ASL (American Sign Language) translation.
-//               It lets a user upload an image, previews it, sends it to a backend API for classification, and
-//               displays the predicted ASL letter(s) with confidence. It also keeps a log of recent translations.
-// LANGUAGE:     JAVASCRIPT / React (using functional components, hooks, and axios for HTTP requests)
+﻿// DESCRIPTION:   React component that enables ASL translation from uploaded
+//                images. It handles image file input, backend prediction via
+//                API, user-specific settings retrieval, and optional speech
+//                output (Text-to-Speech).
+// LANGUAGE:      JAVASCRIPT (React.js)
+// SOURCE(S):     
+//    [1] React Docs. (n.d.). Using the Effect Hook. Retrieved October 4, 2025, from https://react.dev/reference/react/useEffect
+//    [2] React Docs. (n.d.). Forms and Input Handling. Retrieved October 4, 2025, from https://react.dev/learn/forms
+//    [3] Axios GitHub Repository. (n.d.). Axios Documentation. Retrieved October 4, 2025, from https://axios-http.com/docs/intro
+//    [4] MDN Web Docs. (n.d.). Using the Web Speech API. Retrieved October 4, 2025, from https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API
 
-import { useState } from 'react';
-import axios from 'axios';
+// -----------------------------------------------------------------------------
+// Step 1: Import dependencies and helper modules
+// -----------------------------------------------------------------------------
+import { useState, useEffect } from 'react';     // React Hooks for managing state and lifecycle
+import axios from 'axios';                      // HTTP client for backend communication
+import { speak } from './utils/speech.js';      // Local utility for text-to-speech output
 
-export default function ImageTranslate() {
-    // -----------------------------------------------------------------------------------
-    // Step: React state declarations
-    // -----------------------------------------------------------------------------------
-    const [file, setFile] = useState(null);               // The selected file object
-    const [previewUrl, setPreviewUrl] = useState(null);   // URL to preview the selected image
-    const [prediction, setPrediction] = useState(null);   // Received prediction result from backend (highest confidence)
-    const [loading, setLoading] = useState(false);        // Loading flag during API call
-    const [error, setError] = useState(null);             // Error message, if any
-    const [log, setLog] = useState([]);                   // Log of past translations
+// -----------------------------------------------------------------------------
+// Step 2: Define ImageTranslate component
+// -----------------------------------------------------------------------------
+export default function ImageTranslate({ userId = 1 }) {
 
-    // -----------------------------------------------------------------------------------
-    // Handler: when user selects (or changes) an image file
-    // -----------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Step 3: Define state variables
+    // -------------------------------------------------------------------------
+    const [file, setFile] = useState(null);              // Stores the selected image file
+    const [previewUrl, setPreviewUrl] = useState(null);  // Temporary image URL for preview display
+    const [prediction, setPrediction] = useState(null);  // Holds prediction result from backend
+    const [loading, setLoading] = useState(false);       // Boolean flag for loading state
+    const [error, setError] = useState(null);            // Error message (if any)
+    const [log, setLog] = useState([]);                  // List of previous translations
+    const [settings, setSettings] = useState(null);      // User settings from backend (speech/webcam preferences)
+
+    // -------------------------------------------------------------------------
+    // Step 4: Fetch user settings from backend
+    // -------------------------------------------------------------------------
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                // Make GET request to retrieve user's settings by ID
+                const res = await fetch(`http://localhost:8000/settings/${userId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setSettings(data); // Store fetched settings
+                } else {
+                    // If no settings found, default to speech disabled
+                    console.warn("No settings found, defaulting speech to disabled.");
+                    setSettings({ SPEECH_ENABLED: false });
+                }
+            } catch (err) {
+                // Network or API error handling
+                console.error("Error fetching settings:", err);
+                setSettings({ SPEECH_ENABLED: false });
+            }
+        };
+        fetchSettings(); // Call function once component mounts
+    }, [userId]); // Rerun if userId changes
+
+    // -------------------------------------------------------------------------
+    // Step 5: Handle file selection and validation
+    // -------------------------------------------------------------------------
     const handleFileChange = (e) => {
-        const selectedFile = e.target.files[0];
+        const selectedFile = e.target.files[0]; // Get first selected file
         setPrediction(null);
         setError(null);
 
         if (selectedFile) {
             const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+            // Validate allowed image formats
             if (!validTypes.includes(selectedFile.type)) {
                 setFile(null);
                 setPreviewUrl(null);
                 setError('Invalid file type. Please upload a PNG or JPG image.');
                 return;
             }
+            // Create temporary preview URL
             setFile(selectedFile);
-            const url = URL.createObjectURL(selectedFile);
-            setPreviewUrl(url);
+            setPreviewUrl(URL.createObjectURL(selectedFile));
         } else {
+            // Reset states if no file is selected
             setFile(null);
             setPreviewUrl(null);
         }
         console.log('Selected file:', selectedFile);
     };
 
-    // -----------------------------------------------------------------------------------
-    // Handler: when user clicks “Translate” / submit
-    // -----------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Step 6: Handle translation submission
+    // -------------------------------------------------------------------------
     const handleSubmit = async () => {
         if (!file) {
             setError('Please select an image first.');
-            console.warn('No file selected.');
             return;
         }
 
@@ -57,12 +98,11 @@ export default function ImageTranslate() {
         setPrediction(null);
         setError(null);
 
-        const formData = new FormData();
-        formData.append('file', file);
-        console.log('FormData prepared:', formData.get('file'));
+        const formData = new FormData(); // Create form data for upload
+        formData.append('file', file);   // Attach image file
 
         try {
-            console.log('Sending request to backend...');
+            // Send POST request to backend model endpoint
             const response = await axios.post(
                 'http://127.0.0.1:8000/image/predict',
                 formData,
@@ -70,78 +110,70 @@ export default function ImageTranslate() {
             );
             const data = response.data;
 
-            // -----------------------------------------------------------------------------------
-            // Log all predictions for debugging
-            // -----------------------------------------------------------------------------------
+            // Collect all predictions if backend returns multiple
             const allPredictions = [];
             if (Array.isArray(data)) {
                 data.forEach(item => {
-                    if (item.predictions && item.predictions.predictions) {
-                        item.predictions.predictions.forEach(pred => {
-                            allPredictions.push(pred);
-                        });
-                    }
+                    item.predictions?.predictions?.forEach(pred => allPredictions.push(pred));
                 });
             }
-            console.log('All predictions:', allPredictions);
 
-            // -----------------------------------------------------------------------------------
-            // Extract highest confidence prediction only
-            // -----------------------------------------------------------------------------------
+            // Select prediction with highest confidence
             let highestPred = null;
             allPredictions.forEach(pred => {
-                if (!highestPred || pred.confidence > highestPred.confidence) {
+                if (!highestPred || pred.confidence > highestPred.confidence)
                     highestPred = pred;
-                }
             });
 
-            setPrediction(highestPred);
+            setPrediction(highestPred); // Store best result
 
-            // Add this translation to the log (keep only the last 10 entries)
-            setLog((prevLog) => {
+            // -----------------------------------------------------------------
+            // Optional Step: Trigger Text-to-Speech if enabled in settings
+            // -----------------------------------------------------------------
+            if (settings?.SPEECH_ENABLED && highestPred?.class) {
+                speak(`Predicted letter is ${highestPred.class}`);
+            }
+
+            // -----------------------------------------------------------------
+            // Step 7: Update translation log (keep last 10 entries)
+            // -----------------------------------------------------------------
+            setLog(prevLog => {
                 const newEntry = {
                     imageUrl: previewUrl,
                     prediction: highestPred,
                     timestamp: new Date().toLocaleString(),
                 };
-                const updatedLog = [newEntry, ...prevLog];
-                return updatedLog.slice(0, 10);
+                return [newEntry, ...prevLog].slice(0, 10);
             });
+
         } catch (err) {
+            // -----------------------------------------------------------------
+            // Step 8: Error handling for API request
+            // -----------------------------------------------------------------
             console.error('Error during request:', err);
-            if (err.response) {
-                console.error('Backend error response:', err.response.data);
-                setError(`Backend error: ${JSON.stringify(err.response.data)}`);
-            } else if (err.request) {
-                console.error('No response received:', err.request);
-                setError('No response received from backend.');
-            } else {
-                setError(`Request error: ${err.message}`);
-            }
+            if (err.response) setError(`Backend error: ${JSON.stringify(err.response.data)}`);
+            else if (err.request) setError('No response received from backend.');
+            else setError(`Request error: ${err.message}`);
         } finally {
-            setLoading(false);
+            setLoading(false); // End loading state
         }
     };
 
-    // -----------------------------------------------------------------------------------
-    // Handler: clear the translation log entirely
-    // -----------------------------------------------------------------------------------
-    const handleClearLog = () => {
-        setLog([]);
-    };
+    // -------------------------------------------------------------------------
+    // Step 9: Clear all log entries
+    // -------------------------------------------------------------------------
+    const handleClearLog = () => setLog([]);
 
-    // -----------------------------------------------------------------------------------
-    // Handler: remove a specific log entry by index
-    // -----------------------------------------------------------------------------------
-    const handleRemoveLogEntry = (idxToRemove) => {
-        setLog((prevLog) => prevLog.filter((_, idx) => idx !== idxToRemove));
-    };
+    // -------------------------------------------------------------------------
+    // Step 10: Remove specific log entry by index
+    // -------------------------------------------------------------------------
+    const handleRemoveLogEntry = (idx) => setLog(prevLog => prevLog.filter((_, i) => i !== idx));
 
-    // -----------------------------------------------------------------------------------
-    // Helper: render prediction (highest confidence) with red warning for <50%
-    // -----------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Step 11: Render prediction with confidence color coding
+    // -------------------------------------------------------------------------
     const renderPrediction = (pred) => {
-        if (!pred || !pred.class || pred.confidence === undefined) return null;
+        if (!pred?.class || pred.confidence === undefined) return null;
         const lowConfidence = pred.confidence < 0.5;
         return (
             <div style={{ color: lowConfidence ? 'red' : 'white' }}>
@@ -151,14 +183,19 @@ export default function ImageTranslate() {
         );
     };
 
-    // -----------------------------------------------------------------------------------
-    // Render the UI
-    // -----------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Step 12: Render UI
+    // -------------------------------------------------------------------------
+    if (!settings) return <div>Loading user settings...</div>;
+
     return (
         <div style={{ padding: '2rem', display: 'flex', alignItems: 'flex-start' }}>
+            {/* ----------------------- Left Panel ----------------------- */}
             <div style={{ flex: 1, minWidth: 0 }}>
-                {/* File input and Translate button */}
+                {/* File input control */}
                 <input type="file" accept="image/*" onChange={handleFileChange} />
+
+                {/* Submit button */}
                 <button
                     onClick={handleSubmit}
                     disabled={loading || !file}
@@ -167,7 +204,7 @@ export default function ImageTranslate() {
                     {loading ? 'Translating...' : 'Translate'}
                 </button>
 
-                {/* Preview of selected image */}
+                {/* Image preview display */}
                 {previewUrl && (
                     <div style={{ marginTop: '1rem' }}>
                         <img
@@ -178,10 +215,10 @@ export default function ImageTranslate() {
                     </div>
                 )}
 
-                {/* Show error message */}
+                {/* Error message display */}
                 {error && <p style={{ color: 'red' }}>{error}</p>}
 
-                {/* Show highest confidence prediction result */}
+                {/* Prediction output */}
                 {prediction && (
                     <div style={{ marginTop: '1rem' }}>
                         <h3>Prediction:</h3>
@@ -190,7 +227,7 @@ export default function ImageTranslate() {
                 )}
             </div>
 
-            {/* Translation log (if any) */}
+            {/* ----------------------- Right Panel (Log) ----------------------- */}
             {log.length > 0 && (
                 <div style={{
                     marginLeft: '2rem',
@@ -200,6 +237,7 @@ export default function ImageTranslate() {
                     flexDirection: 'column',
                     alignItems: 'flex-end'
                 }}>
+                    {/* Log header with clear button */}
                     <div style={{
                         width: '100%',
                         display: 'flex',
@@ -212,14 +250,14 @@ export default function ImageTranslate() {
                             Clear Log
                         </button>
                     </div>
-                    <div
-                        style={{
-                            width: '100%',
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(5, 1fr)',
-                            gap: '1rem'
-                        }}
-                    >
+
+                    {/* Grid layout for log items */}
+                    <div style={{
+                        width: '100%',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(5, 1fr)',
+                        gap: '1rem'
+                    }}>
                         {log.map((entry, idx) => (
                             <div key={idx} style={{
                                 border: '1px solid #ccc',
@@ -231,17 +269,14 @@ export default function ImageTranslate() {
                                 minHeight: '170px',
                                 boxSizing: 'border-box'
                             }}>
+                                {/* Log entry preview image */}
                                 <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
                                     <img
                                         src={entry.imageUrl}
                                         alt={`Log Preview ${idx + 1}`}
-                                        style={{
-                                            maxWidth: '100%',
-                                            maxHeight: '80px',
-                                            display: 'block',
-                                            borderRadius: '4px'
-                                        }}
+                                        style={{ maxWidth: '100%', maxHeight: '80px', display: 'block', borderRadius: '4px' }}
                                     />
+                                    {/* Delete log entry button */}
                                     <button
                                         onClick={() => handleRemoveLogEntry(idx)}
                                         style={{
@@ -262,11 +297,11 @@ export default function ImageTranslate() {
                                         }}
                                         title="Remove this entry"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24">
-                                            <path fill="currentColor" d="M7 21a2 2 0 0 1-2-2V7H3V5h5V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1h5v2h-2v12a2 2 a 0 0 1-2 2H7zm10-14H7v12h10V7zm-6 2h2v8h-2V9z" />
-                                        </svg>
+                                        ✖
                                     </button>
                                 </div>
+
+                                {/* Timestamp and prediction info */}
                                 <div style={{ fontSize: '0.8em', color: '#555', margin: '0.25rem 0' }}>
                                     {entry.timestamp}
                                 </div>

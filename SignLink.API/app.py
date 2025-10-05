@@ -54,7 +54,7 @@ app.include_router(image_router)                                # image translat
 app.include_router(video_router)                                # video translation
 app.include_router(webcam_router)                               # webcam translation
 app.include_router(settings_router)                             # user settings
-app.include_router(auth_router, prefix="/auth", tags=["auth"])  # authentication
+app.include_router(auth_router)  # authentication
 
 # -----------------------------------------------------------------------------------
 # Step 5: Health Check Endpoint

@@ -1,89 +1,102 @@
-# DESCRIPTION:  This script provides an API endpoint for ASL (American Sign Language) video classification.
-#               It accepts an uploaded video, extracts frames, and sends each frame to a Roboflow Inference API
-#               for ASL alphabet prediction. The prediction results for all frames are returned as JSON for
-#               integration with frontend or other services.
+# DESCRIPTION:  This FastAPI router handles uploaded video files and performs ASL (American Sign Language)
+#               translation by processing video frames at intervals. For each frame, it detects hands using
+#               MediaPipe, crops the hand region, and sends it to the Roboflow API for ASL alphabet prediction.
+#               Results include predicted labels and confidence scores for each timestamp.
 # LANGUAGE:     PYTHON
 # SOURCE(S):    [1] GeeksforGeeks. (2023, January 10). Face and hand landmarks detection using Python - Mediapipe, OpenCV. GeeksforGeeks. Retrieved September 19, 2025, from https://www.geeksforgeeks.org/machine-learning/face-and-hand-landmarks-detection-using-python-mediapipe-opencv/
 #               [2] Google. (n.d.). MediaPipe Hands. MediaPipe. Retrieved September 19, 2025, from https://mediapipe.readthedocs.io/en/latest/solutions/hands.html
 #               [3] Google AI Edge. (2025, January 13). Hand landmarks detection guide for Python. Google AI Edge. Retrieved September 19, 2025, from https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/python
 #               [4] Roboflow. (2025, February 4). Python inference-sdk. In Roboflow Documentation. Retrieved September 19, 2025, from https://docs.roboflow.com/deploy/sdks/python-inference-sdk
 #               [5] Roboflow. (2025, May 16). Using the Python SDK. In Roboflow Developer Documentation. Retrieved September 19, 2025, from https://docs.roboflow.com/developer/python-sdk/using-the-python-sdk
-#               [6] Roboflow. (n.d.). How do I run inference? Inference Documentation. Retrieved September 19, 2025, from https://inference.roboflow.com/quickstart/inference_101/
-#               [7] Roboflow. (n.d.). InferencePipeline. In Roboflow Documentation. Retrieved September 19, 2025, from https://inference.roboflow.com/using_inference/inference_pipeline/
-#               [8] Warchocki, J., Vlasenko, M., & Eisma, Y. B. (2023, October 23). GRLib: An open-source hand gesture detection and recognition python library. arXiv. Retrieved September 19, 2025, from https://arxiv.org/abs/2310.14919
-#               [9] Gautam, A. (2024). Hand recognition using OpenCV & MediaPipe. Medium. Retrieved September 19, 2025, from https://medium.com/aditee-gautam/hand-recognition-using-opencv-a7b109941c88
 
-# -----------------------------------------------------------------------------------
-# Step 1: Import required libraries and modules
-# -----------------------------------------------------------------------------------
-from fastapi import APIRouter, UploadFile, File                        # FastAPI router and file upload support
-from fastapi.responses import JSONResponse                             # For returning JSON responses
-import tempfile                                                        # For creating temporary files
-import os                                                             # For environment variables and file operations
-import cv2                                                            # OpenCV for video and image processing
-from inference_sdk import InferenceHTTPClient                          # Roboflow Inference client for API calls
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
+import cv2
+import numpy as np
+import tempfile
+import os
+from utils.mediapipe_utils import init_hands, crop_hand_from_frame
+from utils.roboflow_client import run_asl_inference
 
-# -----------------------------------------------------------------------------------
-# Step 2: Initialize API router and Roboflow client
-# -----------------------------------------------------------------------------------
-router = APIRouter(prefix="/video", tags=["video"])                    # Create router for video endpoints
+router = APIRouter(prefix="/video", tags=["video"])
 
-ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "OrkdRhEVTGpAqU13RVg0") # Get Roboflow API key from environment or use default
-WORKSPACE = "sweng894"                                                 # Roboflow workspace name
-WORKFLOW_ID = "asl-alphabet"                                           # Roboflow workflow ID
+# Initialize MediaPipe in static image mode for batch frame analysis
+hands = init_hands(static_image_mode=True)
 
-client = InferenceHTTPClient(
-    api_url="https://serverless.roboflow.com",                         # Roboflow inference API endpoint
-    api_key=ROBOFLOW_API_KEY                                           # Roboflow API key
-)
-
-# -----------------------------------------------------------------------------------
-# Step 3: Define video prediction endpoint
-# -----------------------------------------------------------------------------------
-@router.post("/predict")
-async def predict_video(file: UploadFile = File(...)):
+@router.post("/translate")
+async def translate_video(file: UploadFile = File(...)):
     """
-    Predict ASL signs in an uploaded video file.
-    
-    Args:
-        file (UploadFile): The video file uploaded by the user.
-
-    Returns:
-        JSONResponse: A response containing the predictions or an error message.
+    Handles video upload for ASL translation.
+    Steps:
+    1. Save uploaded file temporarily.
+    2. Extract frames every N milliseconds.
+    3. Use MediaPipe to detect hand(s) in each frame.
+    4. Crop hand and run ASL inference on Roboflow.
+    5. Return list of predictions with timestamps.
     """
+
+    # ----------------------------------------------------------------------
+    # Step 1: Validate uploaded file type
+    # ----------------------------------------------------------------------
+    valid_types = ["video/mp4", "video/avi", "video/mov", "video/quicktime"]
+    if file.content_type not in valid_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an MP4, AVI, or MOV video.")
+
+    # ----------------------------------------------------------------------
+    # Step 2: Save to temporary file
+    # ----------------------------------------------------------------------
     try:
-        # Save uploaded video temporarily
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(await file.read())                          # Write uploaded video to temp file
-            video_path = tmp_file.name                                 # Store temp file path
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save uploaded video: {e}")
 
-        cap = cv2.VideoCapture(video_path)                             # Open video file for reading frames
-        predictions = []                                               # List to store predictions for each frame
+    # ----------------------------------------------------------------------
+    # Step 3: Open video for processing
+    # ----------------------------------------------------------------------
+    cap = cv2.VideoCapture(tmp_path)
+    if not cap.isOpened():
+        os.remove(tmp_path)
+        raise HTTPException(status_code=500, detail="Failed to open video file for reading.")
 
+    frame_rate = cap.get(cv2.CAP_PROP_FPS)
+    frame_interval = int(frame_rate * 0.5)  # Process every 0.5 seconds (adjust as needed)
+    frame_idx = 0
+    predictions = []
+
+    try:
         while True:
-            ret, frame = cap.read()                                    # Read a frame from the video
-            if not ret:                                                # If no more frames, exit loop
+            ret, frame = cap.read()
+            if not ret:
                 break
 
-            # Save frame as temporary image
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_img:
-                frame_path = tmp_img.name
-                cv2.imwrite(frame_path, frame)                         # Write frame to temp image file
+            if frame_idx % frame_interval == 0:
+                # ----------------------------------------------------------------------
+                # Step 4: Detect and crop hand(s)
+                # ----------------------------------------------------------------------
+                cropped_img = crop_hand_from_frame(frame, hands)
+                if cropped_img is not None:
+                    # ----------------------------------------------------------------------
+                    # Step 5: Run ASL prediction via Roboflow
+                    # ----------------------------------------------------------------------
+                    pred = run_asl_inference(cropped_img)
+                    predictions.append({
+                        "frame": frame_idx,
+                        "timestamp_sec": round(frame_idx / frame_rate, 2),
+                        "prediction": pred
+                    })
 
-            # Run Roboflow workflow for ASL prediction
-            result = client.run_workflow(
-                workspace_name=WORKSPACE,                              # Roboflow workspace name
-                workflow_id=WORKFLOW_ID,                               # Roboflow workflow ID
-                images={"image": frame_path},                          # Pass frame image file
-                use_cache=True                                         # Use cached results if available
-            )
-            predictions.append(result)                                 # Store prediction result
-            os.remove(frame_path)                                      # Delete temporary frame image file
+            frame_idx += 1
 
-        cap.release()                                                  # Release video capture resource
-        os.remove(video_path)                                          # Delete temporary video file
+    finally:
+        cap.release()
+        os.remove(tmp_path)
 
-        return JSONResponse(content={"predictions": predictions})      # Return all predictions as JSON
+    # ----------------------------------------------------------------------
+    # Step 6: Return JSON response
+    # ----------------------------------------------------------------------
+    if not predictions:
+        raise HTTPException(status_code=404, detail="No hands detected in video.")
 
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500) # Return error as JSON if exception occurs
+    return JSONResponse(content={"predictions": predictions})

@@ -31,3 +31,5 @@ C:/Datasets/
 *.tar.gz
 /SignLink.API/utils/.env
 /SignLink.API/.env
+/SignLink.API/tests/ASL_Short_Video.mp4
+/SignLink.API/tests/debug_outputs

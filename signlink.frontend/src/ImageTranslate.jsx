@@ -131,7 +131,7 @@ export default function ImageTranslate({ userId = 1 }) {
             // Optional Step: Trigger Text-to-Speech if enabled in settings
             // -----------------------------------------------------------------
             if (settings?.SPEECH_ENABLED && highestPred?.class) {
-                speak(`Predicted letter is ${highestPred.class}`);
+                speak(`${highestPred.class}`);
             }
 
             // -----------------------------------------------------------------

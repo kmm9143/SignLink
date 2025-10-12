@@ -131,7 +131,7 @@ const WebcamTranslator = ({ userId = 1 }) => {
             const preds = parsed?.predictions?.predictions || [];
             if (preds.length === 0) return;
             const top = preds[0];
-            speak(`Predicted letter is ${top.class}`);
+            speak(`${top.class}`);
         } catch {
             console.warn("Failed to parse prediction for speech output.");
         }

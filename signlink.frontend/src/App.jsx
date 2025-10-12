@@ -13,7 +13,7 @@
 import { useState } from 'react';
 import ImageTranslate from './ImageTranslate.jsx';    // Component for image-based ASL translation
 import WebcamTranslate from './WebcamTranslate.jsx';  // Component for webcam-based ASL translation
-import VideoTranslate from './VideoTranslate.jsx';    // ✅ New component for video-based ASL translation
+import VideoTranslate from './VideoTranslate.jsx';    // New component for video-based ASL translation
 import UserSettings from './UserSettings.jsx';        // Component for managing user preferences/settings
 import Auth from './Auth.jsx';                        // Component for user login/signup functionality
 
@@ -74,7 +74,7 @@ export default function App() {
                     Webcam
                 </button>
 
-                {/* ✅ Video Mode */}
+                {/* Video Mode */}
                 <button
                     onClick={() => setMode('video')}
                     style={{
@@ -87,8 +87,11 @@ export default function App() {
 
                 {/* Settings Button */}
                 <button
-                    onClick={() => setShowSettings(true)}
-                    style={{ float: 'right' }}
+                    onClick={() => setShowSettings(!showSettings)}
+                    style={{
+                        marginRight: '1rem',
+                        backgroundColor: showSettings ? '#ccc' : ''
+                    }}
                 >
                     Settings
                 </button>
@@ -101,7 +104,7 @@ export default function App() {
                 <>
                     {mode === 'image' && <ImageTranslate userId={user.id} />}
                     {mode === 'webcam' && <WebcamTranslate userId={user.id} />}
-                    {mode === 'video' && <VideoTranslate userId={user.id} />} {/* ✅ Video mode */}
+                    {mode === 'video' && <VideoTranslate userId={user.id} />} {/* Video mode */}
                 </>
             )}
 

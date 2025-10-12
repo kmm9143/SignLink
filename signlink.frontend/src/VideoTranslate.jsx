@@ -1,16 +1,39 @@
-﻿import { useState, useEffect } from 'react';
+﻿// DESCRIPTION:  This React component handles the "Upload Video" translation mode for the ASL Translator app.
+//                It allows users to upload video files containing sign language gestures, sends the video
+//                to the backend for frame-by-frame inference, displays top predictions per frame, and logs
+//                the last three processed videos for quick reference. The component also integrates optional
+//                text-to-speech output for recognized signs when enabled in user settings.
+// LANGUAGE:     JAVASCRIPT (React.js)
+// SOURCE(S):    [1] React Documentation. (n.d.). useState and useEffect Hooks. Retrieved October 11, 2025, from https://react.dev/reference/react
+//               [2] Axios Documentation. (n.d.). Handling POST requests with multipart/form-data. Retrieved October 11, 2025, from https://axios-http.com
+//               [3] MDN Web Docs. (n.d.). FormData API and File Uploads. Retrieved October 11, 2025, from https://developer.mozilla.org/en-US/docs/Web/API/FormData
+//               [4] MDN Web Docs. (n.d.). Using object URLs for local media previews. Retrieved October 11, 2025, from https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL
+
+// -----------------------------------------------------------------------------
+// Step 1: Import dependencies and utility functions
+// -----------------------------------------------------------------------------
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { speak } from './utils/speech.js';
+import { speak } from './utils/speech.js';  // Custom utility for optional TTS output
 
+// -----------------------------------------------------------------------------
+// Step 2: Define the VideoTranslate component
+// -----------------------------------------------------------------------------
 export default function VideoTranslate({ userId = 1 }) {
-    const [file, setFile] = useState(null);
-    const [previewUrl, setPreviewUrl] = useState(null);
-    const [predictions, setPredictions] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [settings, setSettings] = useState(null);
-    const [log, setLog] = useState([]);
+    // -------------------------------------------------------------------------
+    // State variables
+    // -------------------------------------------------------------------------
+    const [file, setFile] = useState(null);                 // Selected video file
+    const [previewUrl, setPreviewUrl] = useState(null);     // Local URL for previewing uploaded video
+    const [predictions, setPredictions] = useState([]);     // Array of top frame predictions
+    const [loading, setLoading] = useState(false);          // Boolean for request state
+    const [error, setError] = useState(null);               // Error message string
+    const [settings, setSettings] = useState(null);         // User settings (e.g., speech enabled)
+    const [log, setLog] = useState([]);                     // History of last three processed videos
 
+    // -------------------------------------------------------------------------
+    // Step 3: Fetch user settings on mount (enables/controls speech feedback)
+    // -------------------------------------------------------------------------
     useEffect(() => {
         const fetchSettings = async () => {
             try {
@@ -28,6 +51,9 @@ export default function VideoTranslate({ userId = 1 }) {
         fetchSettings();
     }, [userId]);
 
+    // -------------------------------------------------------------------------
+    // Step 4: Handle video file selection and validation
+    // -------------------------------------------------------------------------
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         setPredictions([]);
@@ -49,6 +75,9 @@ export default function VideoTranslate({ userId = 1 }) {
         }
     };
 
+    // -------------------------------------------------------------------------
+    // Step 5: Handle video upload and backend translation
+    // -------------------------------------------------------------------------
     const handleSubmit = async () => {
         if (!file) {
             setError('Please select a video first.');
@@ -71,7 +100,9 @@ export default function VideoTranslate({ userId = 1 }) {
 
             const data = response.data;
 
-            // Flatten all predictions first
+            // -----------------------------------------------------------------
+            // Step 5.1: Flatten and normalize backend predictions
+            // -----------------------------------------------------------------
             const allPreds = data.predictions.flatMap((frameData) => {
                 const predictionArray = frameData.prediction || [];
                 return predictionArray.flatMap((inner) => {
@@ -84,7 +115,9 @@ export default function VideoTranslate({ userId = 1 }) {
                 });
             });
 
-            // Keep only top confidence per frame
+            // -----------------------------------------------------------------
+            // Step 5.2: Keep only the highest confidence prediction per frame
+            // -----------------------------------------------------------------
             const topPredsPerFrame = Object.values(
                 allPreds.reduce((acc, p) => {
                     if (!acc[p.frame] || p.confidence > acc[p.frame].confidence) {
@@ -96,13 +129,17 @@ export default function VideoTranslate({ userId = 1 }) {
 
             setPredictions(topPredsPerFrame);
 
-            // Speak predictions if enabled
+            // -----------------------------------------------------------------
+            // Step 5.3: Optional speech synthesis for recognized signs
+            // -----------------------------------------------------------------
             if (settings?.SPEECH_ENABLED && topPredsPerFrame.length > 0) {
                 const combinedText = topPredsPerFrame.map((p) => p.label).join(' ');
                 speak(combinedText);
             }
 
-            // Log last 3 results
+            // -----------------------------------------------------------------
+            // Step 5.4: Log last three video translation sessions
+            // -----------------------------------------------------------------
             setLog((prevLog) => {
                 const newEntry = {
                     videoUrl: previewUrl,
@@ -124,6 +161,9 @@ export default function VideoTranslate({ userId = 1 }) {
         }
     };
 
+    // -------------------------------------------------------------------------
+    // Step 6: Helper renderer for prediction rows
+    // -------------------------------------------------------------------------
     const renderPrediction = (pred, index) => {
         const lowConfidence = pred.confidence < 0.5;
         return (
@@ -140,12 +180,21 @@ export default function VideoTranslate({ userId = 1 }) {
         );
     };
 
+    // -------------------------------------------------------------------------
+    // Step 7: Loading state
+    // -------------------------------------------------------------------------
     if (!settings) return <div>Loading user settings...</div>;
 
+    // -------------------------------------------------------------------------
+    // Step 8: Render the full UI (split into two panels)
+    // -------------------------------------------------------------------------
     return (
         <div style={{ padding: '2rem', display: 'flex', alignItems: 'flex-start' }}>
-            {/* Left Panel */}
+            {/* -----------------------------------------------------------------
+                Left Panel — Video Upload, Preview, and Predictions
+            ----------------------------------------------------------------- */}
             <div style={{ flex: 1, minWidth: 0 }}>
+                {/* File input and submit button */}
                 <input type="file" accept="video/*" onChange={handleFileChange} />
                 <button
                     onClick={handleSubmit}
@@ -155,6 +204,7 @@ export default function VideoTranslate({ userId = 1 }) {
                     {loading ? 'Processing...' : 'Translate'}
                 </button>
 
+                {/* Video preview */}
                 {previewUrl && (
                     <div style={{ marginTop: '1rem' }}>
                         <video
@@ -165,28 +215,53 @@ export default function VideoTranslate({ userId = 1 }) {
                     </div>
                 )}
 
+                {/* Error message */}
                 {error && <p style={{ color: 'red' }}>{error}</p>}
 
+                {/* Scrollable predictions list */}
                 {predictions.length > 0 && (
-                    <div style={{ marginTop: '1rem' }}>
-                        <h3 style={{ color: 'white' }}>Predictions:</h3>
-                        {predictions.map((p, i) => renderPrediction(p, i))}
+                    <div
+                        style={{
+                            marginTop: '1rem',
+                            maxHeight: '250px',
+                            overflowY: 'auto',
+                            paddingRight: '0.5rem',
+                            border: '1px solid #444',
+                            borderRadius: '6px',
+                            background: 'rgba(0,0,0,0.2)',
+                        }}
+                    >
+                        <h3 style={{
+                            color: 'white',
+                            position: 'sticky',
+                            top: 0,
+                            background: 'rgba(0,0,0,0.6)',
+                            padding: '0.25rem'
+                        }}>
+                            Predictions:
+                        </h3>
+                        <div style={{ padding: '0.5rem' }}>
+                            {predictions.map((p, i) => renderPrediction(p, i))}
+                        </div>
                     </div>
                 )}
             </div>
 
-            {/* Right Panel (Video Log) */}
+            {/* -----------------------------------------------------------------
+                Right Panel — Translation Log (Last 3 Sessions)
+            ----------------------------------------------------------------- */}
             {log.length > 0 && (
                 <div
                     style={{
                         marginLeft: '2rem',
                         minWidth: '540px',
-                        maxWidth: '600px',
+                        maxWidth: '1100px',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'flex-end',
                     }}
                 >
+                    {/* Header with title and Clear button */}
                     <div
                         style={{
                             width: '100%',
@@ -205,12 +280,18 @@ export default function VideoTranslate({ userId = 1 }) {
                         </button>
                     </div>
 
+                    {/* Grid of last 3 translated videos */}
                     <div
                         style={{
                             width: '100%',
+                            border: '1px solid #444',
+                            borderRadius: '8px',
+                            background: 'rgba(0,0,0,0.2)',
+                            padding: '1rem',
                             display: 'grid',
                             gridTemplateColumns: 'repeat(3, 1fr)',
                             gap: '1rem',
+                            boxSizing: 'border-box',
                         }}
                     >
                         {log.map((entry, idx) => (
@@ -218,20 +299,48 @@ export default function VideoTranslate({ userId = 1 }) {
                                 key={idx}
                                 style={{
                                     border: '1px solid #ccc',
-                                    padding: '0.5rem',
                                     borderRadius: '8px',
                                     background: 'transparent',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    height: '100%',
+                                    padding: '0.5rem',
+                                    boxSizing: 'border-box',
                                 }}
                             >
+                                {/* Video preview */}
                                 <video
                                     src={entry.videoUrl}
                                     controls
-                                    style={{ width: '100%', borderRadius: '6px' }}
+                                    style={{
+                                        width: '100%',
+                                        borderRadius: '6px',
+                                        marginBottom: '0.4rem',
+                                    }}
                                 />
-                                <div style={{ fontSize: '0.8em', color: '#555', marginTop: '0.25rem' }}>
+
+                                {/* Timestamp */}
+                                <div
+                                    style={{
+                                        fontSize: '0.8em',
+                                        color: '#bbb',
+                                        marginBottom: '0.5rem',
+                                    }}
+                                >
                                     {entry.timestamp}
                                 </div>
-                                <div style={{ marginTop: '0.25rem' }}>
+
+                                {/* Scrollable predictions per video */}
+                                <div
+                                    style={{
+                                        flexGrow: 1,
+                                        overflowY: 'auto',
+                                        minHeight: '160px',
+                                        maxHeight: '220px',
+                                        borderTop: '1px solid #444',
+                                        paddingTop: '0.5rem',
+                                    }}
+                                >
                                     {entry.predictions.map((p, i) => renderPrediction(p, i))}
                                 </div>
                             </div>

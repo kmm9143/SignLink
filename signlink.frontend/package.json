@@ -87,6 +87,7 @@
     "locate-path": "^6.0.0",
     "lodash.merge": "^4.6.2",
     "lru-cache": "^5.1.1",
+    "lucide-react": "^0.545.0",
     "math-intrinsics": "^1.1.0",
     "mime-db": "^1.52.0",
     "mime-types": "^2.1.35",
@@ -129,7 +130,6 @@
     "yallist": "^3.1.1",
     "yocto-queue": "^0.1.0"
   },
-  "devDependencies": {},
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -138,5 +138,8 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.4"
+  }
 }

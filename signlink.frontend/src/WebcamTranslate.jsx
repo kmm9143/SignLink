@@ -1,50 +1,39 @@
-﻿// DESCRIPTION:   React component that enables real-time ASL translation
-//                using webcam input. It streams video frames to a backend
-//                WebSocket, receives predictions and annotated frames,
-//                and optionally outputs speech using Text-to-Speech.
+﻿// DESCRIPTION:   React component for real-time ASL translation via webcam.
+//                Streams video to a backend WebSocket, receives predictions
+//                and annotated frames, and optionally outputs speech (TTS)
+//                with a visual speaker icon indicator.
 // LANGUAGE:      JAVASCRIPT (React.js)
-// SOURCE(S):     
-//    [1] React Docs. (n.d.). Using the Effect Hook. Retrieved October 5, 2025, from https://react.dev/reference/react/useEffect
-//    [2] React Docs. (n.d.). Refs and the DOM. Retrieved October 5, 2025, from https://react.dev/reference/react/useRef
-//    [3] MDN Web Docs. (n.d.). MediaDevices.getUserMedia(). Retrieved October 5, 2025, from https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
-//    [4] MDN Web Docs. (n.d.). WebSocket API. Retrieved October 5, 2025, from https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
 
-// -----------------------------------------------------------------------------
-// Step 1: Import dependencies and helper modules
-// -----------------------------------------------------------------------------
-import React, { useEffect, useRef, useState } from "react"; // React core and hooks
-import { speak } from './utils/speech.js';                 // Local TTS utility
+import React, { useEffect, useRef, useState } from "react";
+import { speak } from './utils/speech.js';
+import { Volume2, VolumeX } from "lucide-react"; // ✅ Speaker icons
 
-// -----------------------------------------------------------------------------
-// Step 2: Define WebcamTranslator component
-// -----------------------------------------------------------------------------
 const WebcamTranslator = ({ userId = 1 }) => {
 
     // -------------------------------------------------------------------------
-    // Step 3: Define refs and state variables
+    // Refs for video, canvas, and WebSocket
     // -------------------------------------------------------------------------
-    const videoRef = useRef(null);      // Reference to video element
-    const canvasRef = useRef(null);     // Reference to canvas element
-    const wsRef = useRef(null);         // Reference to WebSocket connection
+    const videoRef = useRef(null); // Webcam video element
+    const canvasRef = useRef(null); // Canvas for annotated output
+    const wsRef = useRef(null); // WebSocket connection
 
+    // -------------------------------------------------------------------------
+    // State variables
+    // -------------------------------------------------------------------------
     const [prediction, setPrediction] = useState(null); // Latest prediction
-    const [connected, setConnected] = useState(false);  // WebSocket connection state
+    const [connected, setConnected] = useState(false);  // WS connection state
     const [settings, setSettings] = useState(null);     // User settings from backend
+    const [speaking, setSpeaking] = useState(false);    // ✅ Track TTS playback
 
     // -------------------------------------------------------------------------
-    // Step 4: Fetch user settings from backend
+    // Fetch user settings on mount
     // -------------------------------------------------------------------------
     useEffect(() => {
         const fetchSettings = async () => {
             try {
                 const res = await fetch(`http://localhost:8000/settings/${userId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setSettings(data); // Store fetched settings
-                } else {
-                    console.warn("No settings found, defaulting to disabled webcam and speech.");
-                    setSettings({ WEBCAM_ENABLED: false, SPEECH_ENABLED: false });
-                }
+                if (res.ok) setSettings(await res.json());
+                else setSettings({ WEBCAM_ENABLED: false, SPEECH_ENABLED: false });
             } catch (err) {
                 console.error("Error fetching settings:", err);
                 setSettings({ WEBCAM_ENABLED: false, SPEECH_ENABLED: false });
@@ -54,7 +43,7 @@ const WebcamTranslator = ({ userId = 1 }) => {
     }, [userId]);
 
     // -------------------------------------------------------------------------
-    // Step 5: Setup webcam stream and WebSocket connection
+    // Setup webcam stream and WebSocket
     // -------------------------------------------------------------------------
     useEffect(() => {
         if (!settings?.WEBCAM_ENABLED) return;
@@ -71,6 +60,7 @@ const WebcamTranslator = ({ userId = 1 }) => {
         };
         startWebcam();
 
+        // Connect to backend WebSocket
         const ws = new WebSocket("ws://localhost:8000/webcam/ws");
         wsRef.current = ws;
 
@@ -78,11 +68,13 @@ const WebcamTranslator = ({ userId = 1 }) => {
         ws.onclose = () => { setConnected(false); console.log("[WS] Disconnected"); };
         ws.onmessage = (event) => {
             if (typeof event.data === "string") {
+                // Prediction messages
                 try {
                     const msg = JSON.parse(event.data);
                     if (msg.prediction) setPrediction(msg.prediction);
                 } catch { }
             } else {
+                // Annotated image frames
                 const img = new Image();
                 img.onload = () => {
                     const ctx = canvasRef.current.getContext("2d");
@@ -93,14 +85,15 @@ const WebcamTranslator = ({ userId = 1 }) => {
             }
         };
 
+        // Cleanup on unmount
         return () => {
-            if (wsRef.current) wsRef.current.close();               // Close WebSocket
-            if (stream) stream.getTracks().forEach((t) => t.stop()); // Stop webcam tracks
+            if (wsRef.current) wsRef.current.close();
+            if (stream) stream.getTracks().forEach((t) => t.stop());
         };
     }, [settings]);
 
     // -------------------------------------------------------------------------
-    // Step 6: Periodically capture webcam frames and send to backend
+    // Capture webcam frames periodically and send to backend
     // -------------------------------------------------------------------------
     useEffect(() => {
         if (!settings?.WEBCAM_ENABLED) return;
@@ -112,16 +105,15 @@ const WebcamTranslator = ({ userId = 1 }) => {
                 canvas.height = videoRef.current.videoHeight || 480;
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(videoRef.current, 0, 0);
-                const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
-                wsRef.current.send(dataUrl);
+                wsRef.current.send(canvas.toDataURL("image/jpeg", 0.6));
             }
-        }, 500);
+        }, 500); // send every 500ms
 
         return () => clearInterval(interval);
     }, [settings]);
 
     // -------------------------------------------------------------------------
-    // Step 7: Trigger Text-to-Speech for top prediction
+    // Trigger Text-to-Speech for top prediction
     // -------------------------------------------------------------------------
     useEffect(() => {
         if (!settings?.SPEECH_ENABLED || !prediction) return;
@@ -131,14 +123,20 @@ const WebcamTranslator = ({ userId = 1 }) => {
             const preds = parsed?.predictions?.predictions || [];
             if (preds.length === 0) return;
             const top = preds[0];
-            speak(`${top.class}`);
+
+            // ✅ Use speak with callbacks to track speaking state
+            speak(`${top.class}`, {
+                onStart: () => setSpeaking(true),
+                onEnd: () => setSpeaking(false),
+                onError: () => setSpeaking(false),
+            });
         } catch {
             console.warn("Failed to parse prediction for speech output.");
         }
     }, [prediction, settings]);
 
     // -------------------------------------------------------------------------
-    // Step 8: Format prediction text for display
+    // Format prediction for display
     // -------------------------------------------------------------------------
     const renderPrediction = () => {
         if (!prediction) return "None";
@@ -154,7 +152,7 @@ const WebcamTranslator = ({ userId = 1 }) => {
     };
 
     // -------------------------------------------------------------------------
-    // Step 9: Render component UI
+    // Render UI
     // -------------------------------------------------------------------------
     if (!settings) return <div>Loading settings...</div>;
     if (!settings.WEBCAM_ENABLED) return <div>⚠️ Webcam is disabled in your settings.</div>;
@@ -164,15 +162,46 @@ const WebcamTranslator = ({ userId = 1 }) => {
             <div style={{ display: "flex", gap: "24px" }}>
                 <div>
                     <h3>Webcam Input</h3>
-                    <video ref={videoRef} autoPlay playsInline style={{ width: 640, height: 480, background: "#000" }} />
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        style={{ width: 640, height: 480, background: "#000" }}
+                    />
                 </div>
                 <div>
                     <h3>Annotated Output</h3>
-                    <canvas ref={canvasRef} width={640} height={480} style={{ width: 640, height: 480, background: "#000" }} />
+                    <canvas
+                        ref={canvasRef}
+                        width={640}
+                        height={480}
+                        style={{ width: 640, height: 480, background: "#000" }}
+                    />
                 </div>
             </div>
-            <div style={{ marginTop: "16px" }}>
+
+            {/* Prediction display with speaker icon */}
+            <div
+                style={{
+                    marginTop: "16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                }}
+            >
                 <strong>Prediction:</strong> {renderPrediction()}
+
+                {/* ✅ Speaker icon for TTS */}
+                {settings.SPEECH_ENABLED && (
+                    speaking ? (
+                        <Volume2
+                            size={22}
+                            style={{ color: "#4CAF50", animation: "pulse 1s infinite" }}
+                        />
+                    ) : (
+                        <VolumeX size={22} style={{ color: "#aaa" }} />
+                    )
+                )}
             </div>
         </div>
     );

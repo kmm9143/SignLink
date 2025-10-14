@@ -88,6 +88,7 @@
     <PackageJsonDependenciesLocatePath Condition="$(PackageJsonDependenciesLocatePath) == ''">^6.0.0</PackageJsonDependenciesLocatePath>
     <PackageJsonDependenciesLodashMerge Condition="$(PackageJsonDependenciesLodashMerge) == ''">^4.6.2</PackageJsonDependenciesLodashMerge>
     <PackageJsonDependenciesLruCache Condition="$(PackageJsonDependenciesLruCache) == ''">^5.1.1</PackageJsonDependenciesLruCache>
+    <PackageJsonDependenciesLucideReact Condition="$(PackageJsonDependenciesLucideReact) == ''">^0.545.0</PackageJsonDependenciesLucideReact>
     <PackageJsonDependenciesMathIntrinsics Condition="$(PackageJsonDependenciesMathIntrinsics) == ''">^1.1.0</PackageJsonDependenciesMathIntrinsics>
     <PackageJsonDependenciesMimeDb Condition="$(PackageJsonDependenciesMimeDb) == ''">^1.52.0</PackageJsonDependenciesMimeDb>
     <PackageJsonDependenciesMimeTypes Condition="$(PackageJsonDependenciesMimeTypes) == ''">^2.1.35</PackageJsonDependenciesMimeTypes>
@@ -136,5 +137,6 @@
     <PackageJsonKeywords Condition="$(PackageJsonKeywords) == ''">[]</PackageJsonKeywords>
     <PackageJsonAuthor Condition="$(PackageJsonAuthor) == ''"></PackageJsonAuthor>
     <PackageJsonLicense Condition="$(PackageJsonLicense) == ''">ISC</PackageJsonLicense>
+    <PackageJsonDevdependenciesVitejsPluginReact Condition="$(PackageJsonDevdependenciesVitejsPluginReact) == ''">^5.0.4</PackageJsonDevdependenciesVitejsPluginReact>
   </PropertyGroup>
 </Project>

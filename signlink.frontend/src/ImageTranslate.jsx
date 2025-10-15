@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { speak } from "./utils/speech.js";
 import LoadingBar from "./utils/loadingBar.jsx";
-import { Volume2, VolumeX } from "lucide-react"; // ✅ Speaker icons
+import SpeakerIcon from "./components/SpeakerIcon.jsx"; // ✅ Reusable speaker component
 
 export default function ImageTranslate({ userId = 1 }) {
     const [file, setFile] = useState(null);
@@ -160,27 +160,13 @@ export default function ImageTranslate({ userId = 1 }) {
                     Translate
                 </button>
 
-                {/* ✅ Speaker Icon for TTS */}
-                {settings?.SPEECH_ENABLED && (
-                    <span
-                        style={{
-                            marginLeft: "1rem",
-                            verticalAlign: "middle",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "0.25rem",
-                        }}
-                    >
-                        {speaking ? (
-                            <Volume2
-                                size={22}
-                                style={{ color: "#4CAF50", animation: "pulse 1s infinite" }}
-                            />
-                        ) : (
-                            <VolumeX size={22} style={{ color: "#aaa" }} />
-                        )}
-                    </span>
-                )}
+                {/* ✅ Replaced inline icons with SpeakerIcon */}
+                <SpeakerIcon
+                    enabled={settings?.SPEECH_ENABLED}
+                    speaking={speaking}
+                    size={22}
+                    style={{ marginLeft: "1rem" }}
+                />
 
                 {/* ✅ Loading bar when processing */}
                 {loading && (

@@ -5,25 +5,25 @@
 // LANGUAGE:      JAVASCRIPT (React.js)
 
 import React, { useEffect, useRef, useState } from "react";
-import { speak } from './utils/speech.js';
-import { Volume2, VolumeX } from "lucide-react"; // ✅ Speaker icons
+import { speak } from "./utils/speech.js";
+import SpeakerIcon from "./components/SpeakerIcon.jsx"; // ✅ Reusable component
 
 const WebcamTranslator = ({ userId = 1 }) => {
 
     // -------------------------------------------------------------------------
     // Refs for video, canvas, and WebSocket
     // -------------------------------------------------------------------------
-    const videoRef = useRef(null); // Webcam video element
-    const canvasRef = useRef(null); // Canvas for annotated output
-    const wsRef = useRef(null); // WebSocket connection
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+    const wsRef = useRef(null);
 
     // -------------------------------------------------------------------------
     // State variables
     // -------------------------------------------------------------------------
-    const [prediction, setPrediction] = useState(null); // Latest prediction
-    const [connected, setConnected] = useState(false);  // WS connection state
-    const [settings, setSettings] = useState(null);     // User settings from backend
-    const [speaking, setSpeaking] = useState(false);    // ✅ Track TTS playback
+    const [prediction, setPrediction] = useState(null);
+    const [connected, setConnected] = useState(false);
+    const [settings, setSettings] = useState(null);
+    const [speaking, setSpeaking] = useState(false);
 
     // -------------------------------------------------------------------------
     // Fetch user settings on mount
@@ -68,13 +68,11 @@ const WebcamTranslator = ({ userId = 1 }) => {
         ws.onclose = () => { setConnected(false); console.log("[WS] Disconnected"); };
         ws.onmessage = (event) => {
             if (typeof event.data === "string") {
-                // Prediction messages
                 try {
                     const msg = JSON.parse(event.data);
                     if (msg.prediction) setPrediction(msg.prediction);
                 } catch { }
             } else {
-                // Annotated image frames
                 const img = new Image();
                 img.onload = () => {
                     const ctx = canvasRef.current.getContext("2d");
@@ -85,7 +83,7 @@ const WebcamTranslator = ({ userId = 1 }) => {
             }
         };
 
-        // Cleanup on unmount
+        // Cleanup
         return () => {
             if (wsRef.current) wsRef.current.close();
             if (stream) stream.getTracks().forEach((t) => t.stop());
@@ -107,7 +105,7 @@ const WebcamTranslator = ({ userId = 1 }) => {
                 ctx.drawImage(videoRef.current, 0, 0);
                 wsRef.current.send(canvas.toDataURL("image/jpeg", 0.6));
             }
-        }, 500); // send every 500ms
+        }, 500);
 
         return () => clearInterval(interval);
     }, [settings]);
@@ -124,7 +122,6 @@ const WebcamTranslator = ({ userId = 1 }) => {
             if (preds.length === 0) return;
             const top = preds[0];
 
-            // ✅ Use speak with callbacks to track speaking state
             speak(`${top.class}`, {
                 onStart: () => setSpeaking(true),
                 onEnd: () => setSpeaking(false),
@@ -191,17 +188,12 @@ const WebcamTranslator = ({ userId = 1 }) => {
             >
                 <strong>Prediction:</strong> {renderPrediction()}
 
-                {/* ✅ Speaker icon for TTS */}
-                {settings.SPEECH_ENABLED && (
-                    speaking ? (
-                        <Volume2
-                            size={22}
-                            style={{ color: "#4CAF50", animation: "pulse 1s infinite" }}
-                        />
-                    ) : (
-                        <VolumeX size={22} style={{ color: "#aaa" }} />
-                    )
-                )}
+                {/* ✅ Replaced inline icons with reusable component */}
+                <SpeakerIcon
+                    enabled={settings?.SPEECH_ENABLED}
+                    speaking={speaking}
+                    size={22}
+                />
             </div>
         </div>
     );

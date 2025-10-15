@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { speak } from './utils/speech.js';
 import LoadingBar from './utils/loadingBar.jsx';
-import { Volume2, VolumeX } from 'lucide-react';
+import SpeakerIcon from './components/SpeakerIcon.jsx'; // ✅ Reusable component
 
 export default function VideoTranslate({ userId = 1 }) {
     const [file, setFile] = useState(null);
@@ -149,7 +149,6 @@ export default function VideoTranslate({ userId = 1 }) {
         );
     };
 
-    // ✅ Download a log entry as .txt
     const downloadLog = (entry) => {
         let text = entry.predictions.map((p, i) =>
             `Frame ${p.frame}: ${p.label} (${(p.confidence * 100).toFixed(1)}%)`
@@ -160,7 +159,6 @@ export default function VideoTranslate({ userId = 1 }) {
         const link = document.createElement("a");
         link.href = url;
 
-        // Replace extension with .txt
         const name = entry.fileName.endsWith(".mp4") ? entry.fileName.replace(/\.mp4$/i, ".txt") : entry.fileName + ".txt";
         link.download = name;
 
@@ -181,15 +179,13 @@ export default function VideoTranslate({ userId = 1 }) {
                     {loading ? 'Processing...' : 'Translate'}
                 </button>
 
-                {settings.SPEECH_ENABLED && (
-                    <span style={{ marginLeft: '1rem', verticalAlign: 'middle', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                        {speaking ? (
-                            <Volume2 size={22} style={{ color: '#4CAF50', animation: 'pulse 1s infinite' }} />
-                        ) : (
-                            <VolumeX size={22} style={{ color: '#aaa' }} />
-                        )}
-                    </span>
-                )}
+                {/* ✅ Replaced inline icons with reusable component */}
+                <SpeakerIcon
+                    enabled={settings?.SPEECH_ENABLED}
+                    speaking={speaking}
+                    size={22}
+                    style={{ marginLeft: '1rem' }}
+                />
 
                 {loading && <LoadingBar progress={progress} />}
 
@@ -202,8 +198,22 @@ export default function VideoTranslate({ userId = 1 }) {
                 {error && <p style={{ color: 'red' }}>{error}</p>}
 
                 {predictions.length > 0 && (
-                    <div style={{ marginTop: '1rem', maxHeight: '250px', overflowY: 'auto', paddingRight: '0.5rem', border: '1px solid #444', borderRadius: '6px', background: 'rgba(0,0,0,0.2)' }}>
-                        <h3 style={{ color: 'white', position: 'sticky', top: 0, background: 'rgba(0,0,0,0.6)', padding: '0.25rem' }}>Predictions:</h3>
+                    <div style={{
+                        marginTop: '1rem',
+                        maxHeight: '250px',
+                        overflowY: 'auto',
+                        paddingRight: '0.5rem',
+                        border: '1px solid #444',
+                        borderRadius: '6px',
+                        background: 'rgba(0,0,0,0.2)'
+                    }}>
+                        <h3 style={{
+                            color: 'white',
+                            position: 'sticky',
+                            top: 0,
+                            background: 'rgba(0,0,0,0.6)',
+                            padding: '0.25rem'
+                        }}>Predictions:</h3>
                         <div style={{ padding: '0.5rem' }}>
                             {predictions.map((p, i) => renderPrediction(p, i))}
                         </div>
@@ -213,24 +223,70 @@ export default function VideoTranslate({ userId = 1 }) {
 
             {/* Right Panel — Log */}
             {log.length > 0 && (
-                <div style={{ marginLeft: '2rem', minWidth: '540px', maxWidth: '1100px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{
+                    marginLeft: '2rem',
+                    minWidth: '540px',
+                    maxWidth: '1100px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end'
+                }}>
+                    <div style={{
+                        width: '100%',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '1rem'
+                    }}>
                         <h3 style={{ margin: 0, color: 'white' }}>Video Translation Log (last 3)</h3>
                         <button onClick={() => setLog([])} style={{ background: '#e74c3c', color: '#fff' }}>Clear Log</button>
                     </div>
 
-                    <div style={{ width: '100%', border: '1px solid #444', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', boxSizing: 'border-box' }}>
+                    <div style={{
+                        width: '100%',
+                        border: '1px solid #444',
+                        borderRadius: '8px',
+                        background: 'rgba(0,0,0,0.2)',
+                        padding: '1rem',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '1rem',
+                        boxSizing: 'border-box'
+                    }}>
                         {log.map((entry, idx) => (
-                            <div key={idx} style={{ border: '1px solid #ccc', borderRadius: '8px', background: 'transparent', display: 'flex', flexDirection: 'column', height: '100%', padding: '0.5rem', boxSizing: 'border-box' }}>
+                            <div key={idx} style={{
+                                border: '1px solid #ccc',
+                                borderRadius: '8px',
+                                background: 'transparent',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                height: '100%',
+                                padding: '0.5rem',
+                                boxSizing: 'border-box'
+                            }}>
                                 <video src={entry.videoUrl} controls style={{ width: '100%', borderRadius: '6px', marginBottom: '0.4rem' }} />
                                 <div style={{ fontSize: '0.8em', color: '#bbb', marginBottom: '0.5rem' }}>{entry.timestamp}</div>
-                                <div style={{ flexGrow: 1, overflowY: 'auto', minHeight: '160px', maxHeight: '220px', borderTop: '1px solid #444', paddingTop: '0.5rem' }}>
+                                <div style={{
+                                    flexGrow: 1,
+                                    overflowY: 'auto',
+                                    minHeight: '160px',
+                                    maxHeight: '220px',
+                                    borderTop: '1px solid #444',
+                                    paddingTop: '0.5rem'
+                                }}>
                                     {entry.predictions.map((p, i) => renderPrediction(p, i))}
                                 </div>
-                                {/* ✅ Download transcript button */}
                                 <button
                                     onClick={() => downloadLog(entry)}
-                                    style={{ marginTop: '0.5rem', padding: '4px 8px', background: '#1976d2', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                    style={{
+                                        marginTop: '0.5rem',
+                                        padding: '4px 8px',
+                                        background: '#1976d2',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}
                                 >
                                     Download Transcript
                                 </button>

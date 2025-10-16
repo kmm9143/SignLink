@@ -5,11 +5,13 @@
 // LANGUAGE:      JAVASCRIPT (React.js)
 
 import React, { useEffect, useRef, useState } from "react";
-import { speak } from "./utils/speech.js";
-import SpeakerIcon from "./components/SpeakerIcon.jsx"; // ✅ Reusable component
+import SpeakerIcon from "./components/SpeakerIcon.jsx";
+
+// ✅ Import shared logic hooks
+import useUserSettings from "./hooks/useUserSettings";
+import useSpeech from "./hooks/useSpeech";
 
 const WebcamTranslator = ({ userId = 1 }) => {
-
     // -------------------------------------------------------------------------
     // Refs for video, canvas, and WebSocket
     // -------------------------------------------------------------------------
@@ -22,34 +24,18 @@ const WebcamTranslator = ({ userId = 1 }) => {
     // -------------------------------------------------------------------------
     const [prediction, setPrediction] = useState(null);
     const [connected, setConnected] = useState(false);
-    const [settings, setSettings] = useState(null);
-    const [speaking, setSpeaking] = useState(false);
 
-    // -------------------------------------------------------------------------
-    // Fetch user settings on mount
-    // -------------------------------------------------------------------------
-    useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const res = await fetch(`http://localhost:8000/settings/${userId}`);
-                if (res.ok) setSettings(await res.json());
-                else setSettings({ WEBCAM_ENABLED: false, SPEECH_ENABLED: false });
-            } catch (err) {
-                console.error("Error fetching settings:", err);
-                setSettings({ WEBCAM_ENABLED: false, SPEECH_ENABLED: false });
-            }
-        };
-        fetchSettings();
-    }, [userId]);
+    // ✅ Use reusable hooks
+    const settings = useUserSettings(userId);
+    const { speaking, speakText } = useSpeech(settings);
 
     // -------------------------------------------------------------------------
     // Setup webcam stream and WebSocket
     // -------------------------------------------------------------------------
     useEffect(() => {
-        if (!settings?.WEBCAM_ENABLED) return;
+        if (!settings || !settings.WEBCAM_ENABLED) return;
 
         let stream;
-
         const startWebcam = async () => {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -64,15 +50,26 @@ const WebcamTranslator = ({ userId = 1 }) => {
         const ws = new WebSocket("ws://localhost:8000/webcam/ws");
         wsRef.current = ws;
 
-        ws.onopen = () => { setConnected(true); console.log("[WS] Connected"); };
-        ws.onclose = () => { setConnected(false); console.log("[WS] Disconnected"); };
+        ws.onopen = () => {
+            setConnected(true);
+            console.log("[WS] Connected");
+        };
+
+        ws.onclose = () => {
+            setConnected(false);
+            console.log("[WS] Disconnected");
+        };
+
         ws.onmessage = (event) => {
             if (typeof event.data === "string") {
                 try {
                     const msg = JSON.parse(event.data);
                     if (msg.prediction) setPrediction(msg.prediction);
-                } catch { }
+                } catch (err) {
+                    console.warn("Invalid JSON from WebSocket:", err);
+                }
             } else {
+                // Binary frame data → draw annotated image
                 const img = new Image();
                 img.onload = () => {
                     const ctx = canvasRef.current.getContext("2d");
@@ -83,15 +80,15 @@ const WebcamTranslator = ({ userId = 1 }) => {
             }
         };
 
-        // Cleanup
+        // Cleanup WebSocket + video
         return () => {
             if (wsRef.current) wsRef.current.close();
             if (stream) stream.getTracks().forEach((t) => t.stop());
         };
-    }, [settings]);
+    }, [settings?.WEBCAM_ENABLED]); // depends only on webcam setting
 
     // -------------------------------------------------------------------------
-    // Capture webcam frames periodically and send to backend
+    // Periodically send frames to backend
     // -------------------------------------------------------------------------
     useEffect(() => {
         if (!settings?.WEBCAM_ENABLED) return;
@@ -108,10 +105,10 @@ const WebcamTranslator = ({ userId = 1 }) => {
         }, 500);
 
         return () => clearInterval(interval);
-    }, [settings]);
+    }, [settings?.WEBCAM_ENABLED]);
 
     // -------------------------------------------------------------------------
-    // Trigger Text-to-Speech for top prediction
+    // Speech output for new predictions
     // -------------------------------------------------------------------------
     useEffect(() => {
         if (!settings?.SPEECH_ENABLED || !prediction) return;
@@ -121,16 +118,11 @@ const WebcamTranslator = ({ userId = 1 }) => {
             const preds = parsed?.predictions?.predictions || [];
             if (preds.length === 0) return;
             const top = preds[0];
-
-            speak(`${top.class}`, {
-                onStart: () => setSpeaking(true),
-                onEnd: () => setSpeaking(false),
-                onError: () => setSpeaking(false),
-            });
-        } catch {
-            console.warn("Failed to parse prediction for speech output.");
+            speakText(top.class);
+        } catch (err) {
+            console.warn("Failed to process speech output:", err);
         }
-    }, [prediction, settings]);
+    }, [prediction]); // ✅ intentionally omits speakText to avoid stale closure loops
 
     // -------------------------------------------------------------------------
     // Format prediction for display
@@ -149,7 +141,7 @@ const WebcamTranslator = ({ userId = 1 }) => {
     };
 
     // -------------------------------------------------------------------------
-    // Render UI
+    // Render UI (identical)
     // -------------------------------------------------------------------------
     if (!settings) return <div>Loading settings...</div>;
     if (!settings.WEBCAM_ENABLED) return <div>⚠️ Webcam is disabled in your settings.</div>;
@@ -183,12 +175,10 @@ const WebcamTranslator = ({ userId = 1 }) => {
                     marginTop: "16px",
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px"
+                    gap: "8px",
                 }}
             >
                 <strong>Prediction:</strong> {renderPrediction()}
-
-                {/* ✅ Replaced inline icons with reusable component */}
                 <SpeakerIcon
                     enabled={settings?.SPEECH_ENABLED}
                     speaking={speaking}

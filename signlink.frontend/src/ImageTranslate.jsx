@@ -5,54 +5,58 @@
 //                and speaker icon during speech playback.
 // LANGUAGE:      JAVASCRIPT (React.js)
 
-import { useState, useEffect } from "react";
-import axios from "axios";
-import { speak } from "./utils/speech.js";
+import { useState } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 import LoadingBar from "./utils/loadingBar.jsx";
-import SpeakerIcon from "./components/SpeakerIcon.jsx"; // ✅ Reusable speaker component
+
+// ✅ Custom hooks for refactoring logic
+import useUserSettings from "./hooks/useUserSettings";
+import useSpeech from "./hooks/useSpeech";
+import usePredictionAPI from "./hooks/usePredictionAPI";
 
 export default function ImageTranslate({ userId = 1 }) {
+    const settings = useUserSettings(userId);
+    const { speaking, speakText } = useSpeech(settings);
+
+    // Parser function unique to image translation
+    const parseImagePredictions = (data) => {
+        const allPredictions = [];
+        if (Array.isArray(data)) {
+            data.forEach((item) => {
+                item.predictions?.predictions?.forEach((pred) => allPredictions.push(pred));
+            });
+        }
+        let highestPred = null;
+        allPredictions.forEach((pred) => {
+            if (!highestPred || pred.confidence > highestPred.confidence)
+                highestPred = pred;
+        });
+        return highestPred;
+    };
+
+    // ✅ Shared backend logic (upload, loading, error, predictions)
+    const { sendFile, predictions, loading, error } = usePredictionAPI(
+        "http://127.0.0.1:8000/image/predict",
+        parseImagePredictions
+    );
+
+    // ✅ Local UI states
     const [file, setFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [prediction, setPrediction] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
     const [log, setLog] = useState([]);
-    const [settings, setSettings] = useState(null);
-    const [speaking, setSpeaking] = useState(false); // ✅ Track when speech is active
 
-    // Fetch user settings
-    useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const res = await fetch(`http://localhost:8000/settings/${userId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setSettings(data);
-                } else {
-                    console.warn("No settings found, defaulting speech to disabled.");
-                    setSettings({ SPEECH_ENABLED: false });
-                }
-            } catch (err) {
-                console.error("Error fetching settings:", err);
-                setSettings({ SPEECH_ENABLED: false });
-            }
-        };
-        fetchSettings();
-    }, [userId]);
-
-    // Handle file input
+    // Handle file input (same UI logic)
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         setPrediction(null);
-        setError(null);
 
         if (selectedFile) {
             const validTypes = ["image/png", "image/jpeg", "image/jpg"];
             if (!validTypes.includes(selectedFile.type)) {
                 setFile(null);
                 setPreviewUrl(null);
-                setError("Invalid file type. Please upload a PNG or JPG image.");
+                alert("Invalid file type. Please upload a PNG or JPG image.");
                 return;
             }
             setFile(selectedFile);
@@ -65,69 +69,22 @@ export default function ImageTranslate({ userId = 1 }) {
 
     // Submit image for prediction
     const handleSubmit = async () => {
-        if (!file) {
-            setError("Please select an image first.");
-            return;
-        }
+        if (!file) return alert("Please select an image first.");
 
-        setLoading(true);
-        setPrediction(null);
-        setError(null);
+        const pred = await sendFile(file);
+        setPrediction(pred);
 
-        const formData = new FormData();
-        formData.append("file", file);
+        if (settings?.SPEECH_ENABLED && pred?.class) speakText(pred.class);
 
-        try {
-            const response = await axios.post(
-                "http://127.0.0.1:8000/image/predict",
-                formData,
-                { headers: { "Content-Type": "multipart/form-data" } }
-            );
-
-            const data = response.data;
-            const allPredictions = [];
-            if (Array.isArray(data)) {
-                data.forEach((item) => {
-                    item.predictions?.predictions?.forEach((pred) => allPredictions.push(pred));
-                });
-            }
-
-            let highestPred = null;
-            allPredictions.forEach((pred) => {
-                if (!highestPred || pred.confidence > highestPred.confidence)
-                    highestPred = pred;
-            });
-
-            setPrediction(highestPred);
-
-            // ✅ Speech output with visual indicator
-            if (settings?.SPEECH_ENABLED && highestPred?.class) {
-                speak(`${highestPred.class}`, {
-                    onStart: () => setSpeaking(true),
-                    onEnd: () => setSpeaking(false),
-                    onError: () => setSpeaking(false),
-                });
-            }
-
-            // ✅ Add entry to the log
-            setLog((prevLog) => {
-                const newEntry = {
-                    imageUrl: previewUrl,
-                    prediction: highestPred,
-                    timestamp: new Date().toLocaleString(),
-                };
-                return [newEntry, ...prevLog].slice(0, 10);
-            });
-        } catch (err) {
-            console.error("Error during request:", err);
-            if (err.response)
-                setError(`Backend error: ${JSON.stringify(err.response.data)}`);
-            else if (err.request)
-                setError("No response received from backend.");
-            else setError(`Request error: ${err.message}`);
-        } finally {
-            setLoading(false);
-        }
+        // ✅ Add entry to the log
+        setLog((prevLog) => {
+            const newEntry = {
+                imageUrl: previewUrl,
+                prediction: pred,
+                timestamp: new Date().toLocaleString(),
+            };
+            return [newEntry, ...prevLog].slice(0, 10);
+        });
     };
 
     const handleClearLog = () => setLog([]);
@@ -160,13 +117,27 @@ export default function ImageTranslate({ userId = 1 }) {
                     Translate
                 </button>
 
-                {/* ✅ Replaced inline icons with SpeakerIcon */}
-                <SpeakerIcon
-                    enabled={settings?.SPEECH_ENABLED}
-                    speaking={speaking}
-                    size={22}
-                    style={{ marginLeft: "1rem" }}
-                />
+                {/* ✅ Speaker Icon for TTS */}
+                {settings?.SPEECH_ENABLED && (
+                    <span
+                        style={{
+                            marginLeft: "1rem",
+                            verticalAlign: "middle",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.25rem",
+                        }}
+                    >
+                        {speaking ? (
+                            <Volume2
+                                size={22}
+                                style={{ color: "#4CAF50", animation: "pulse 1s infinite" }}
+                            />
+                        ) : (
+                            <VolumeX size={22} style={{ color: "#aaa" }} />
+                        )}
+                    </span>
+                )}
 
                 {/* ✅ Loading bar when processing */}
                 {loading && (

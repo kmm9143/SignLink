@@ -1,11 +1,11 @@
 ﻿import { useState } from "react";
-import LoadingBar from "./components/common/LoadingBar.jsx";
-import SpeakerIcon from "./components/common/SpeakerIcon.jsx";
+import LoadingBar from "../common/LoadingBar.jsx";
+import SpeakerIcon from "../common/SpeakerIcon.jsx";
 
 // ✅ Reusable hooks
-import useUserSettings from "./hooks/useUserSettings";
-import useSpeech from "./hooks/useSpeech";
-import usePredictionAPI from "./hooks/usePredictionAPI";
+import useUserSettings from "../../hooks/useUserSettings";
+import useSpeech from "../../hooks/useSpeech";
+import usePredictionAPI from "../../hooks/usePredictionAPI";
 
 export default function VideoTranslate({ userId = 1 }) {
     // Fetch user settings and initialize speech handling
@@ -40,7 +40,7 @@ export default function VideoTranslate({ userId = 1 }) {
 
     // ✅ Use shared backend logic (loading, error, upload)
     const { sendFile, predictions, loading, error } = usePredictionAPI(
-        "http://127.0.0.1:8000/video/translate",
+        "/video/translate",
         parseVideoPredictions
     );
 

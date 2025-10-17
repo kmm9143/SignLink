@@ -1,4 +1,3 @@
-// hooks/useUserSettings.js
 import { useState, useEffect } from "react";
 
 export default function useUserSettings(userId) {
@@ -7,13 +6,14 @@ export default function useUserSettings(userId) {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const res = await fetch(`http://localhost:8000/settings/${userId}`);
+                // use relative path so Vite proxy forwards to backend
+                const res = await fetch(`/settings/${userId}`, { credentials: "include" });
                 setSettings(res.ok ? await res.json() : { SPEECH_ENABLED: false });
             } catch {
                 setSettings({ SPEECH_ENABLED: false });
             }
         };
-        fetchSettings();
+        if (userId != null) fetchSettings();
     }, [userId]);
 
     return settings;

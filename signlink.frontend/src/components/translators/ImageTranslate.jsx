@@ -1,15 +1,11 @@
-﻿// DESCRIPTION:   React component that enables ASL translation from uploaded
-//                images using speaker icon component for TTS.
-// LANGUAGE:      JAVASCRIPT (React.js)
-
-import { useState } from "react";
-import LoadingBar from "./components/common/LoadingBar.jsx";
-import SpeakerIcon from "./components/common/SpeakerIcon.jsx";
+﻿import { useState } from "react";
+import LoadingBar from "../common/LoadingBar.jsx";
+import SpeakerIcon from "../common/SpeakerIcon.jsx";
 
 // ✅ Reusable hooks
-import useUserSettings from "./hooks/useUserSettings";
-import useSpeech from "./hooks/useSpeech";
-import usePredictionAPI from "./hooks/usePredictionAPI";
+import useUserSettings from "../../hooks/useUserSettings";
+import useSpeech from "../../hooks/useSpeech";
+import usePredictionAPI from "../../hooks/usePredictionAPI";
 
 export default function ImageTranslate({ userId = 1 }) {
     const settings = useUserSettings(userId);
@@ -33,7 +29,7 @@ export default function ImageTranslate({ userId = 1 }) {
 
     // Shared backend logic
     const { sendFile, predictions, loading, error } = usePredictionAPI(
-        "http://127.0.0.1:8000/image/predict",
+        "/image/predict",
         parseImagePredictions
     );
 

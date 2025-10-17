@@ -5,11 +5,11 @@
 // LANGUAGE:      JAVASCRIPT (React.js)
 
 import React, { useEffect, useRef, useState } from "react";
-import SpeakerIcon from "./components/common/SpeakerIcon.jsx";
+import SpeakerIcon from "../common/SpeakerIcon.jsx";
 
 // ✅ Import shared logic hooks
-import useUserSettings from "./hooks/useUserSettings";
-import useSpeech from "./hooks/useSpeech";
+import useUserSettings from "../../hooks/useUserSettings";
+import useSpeech from "../../hooks/useSpeech";
 
 const WebcamTranslator = ({ userId = 1 }) => {
     // -------------------------------------------------------------------------

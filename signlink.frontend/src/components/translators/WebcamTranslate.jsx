@@ -5,7 +5,7 @@
 // LANGUAGE:      JAVASCRIPT (React.js)
 
 import React, { useEffect, useRef, useState } from "react";
-import SpeakerIcon from "./components/SpeakerIcon.jsx";
+import SpeakerIcon from "./components/common/SpeakerIcon.jsx";
 
 // ✅ Import shared logic hooks
 import useUserSettings from "./hooks/useUserSettings";

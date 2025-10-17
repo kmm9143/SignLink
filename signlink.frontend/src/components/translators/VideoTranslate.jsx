@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
-import LoadingBar from "./utils/loadingBar.jsx";
-import SpeakerIcon from "./components/SpeakerIcon.jsx";
+import LoadingBar from "./components/common/LoadingBar.jsx";
+import SpeakerIcon from "./components/common/SpeakerIcon.jsx";
 
 // ✅ Reusable hooks
 import useUserSettings from "./hooks/useUserSettings";

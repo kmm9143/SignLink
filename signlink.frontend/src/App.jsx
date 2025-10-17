@@ -11,10 +11,10 @@
 // Step 1: Import React dependencies and local components
 // -----------------------------------------------------------------------------
 import { useState } from 'react';
-import ImageTranslate from './ImageTranslate.jsx';    // Component for image-based ASL translation
-import WebcamTranslate from './WebcamTranslate.jsx';  // Component for webcam-based ASL translation
-import VideoTranslate from './VideoTranslate.jsx';    // New component for video-based ASL translation
-import UserSettings from './UserSettings.jsx';        // Component for managing user preferences/settings
+import ImageTranslate from './components/translators/ImageTranslate.jsx';    // Component for image-based ASL translation
+import WebcamTranslate from './components/translators/WebcamTranslate.jsx';  // Component for webcam-based ASL translation
+import VideoTranslate from './components/translators/VideoTranslate.jsx';    // New component for video-based ASL translation
+import UserSettings from './components/common/UserSettings.jsx';        // Component for managing user preferences/settings
 import Auth from './Auth.jsx';                        // Component for user login/signup functionality
 
 // -----------------------------------------------------------------------------

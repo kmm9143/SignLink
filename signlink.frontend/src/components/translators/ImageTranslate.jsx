@@ -1,15 +1,12 @@
 ﻿// DESCRIPTION:   React component that enables ASL translation from uploaded
-//                images. It handles image file input, backend prediction via
-//                API, user-specific settings retrieval, and optional speech
-//                output (Text-to-Speech) with a visual loading indicator
-//                and speaker icon during speech playback.
+//                images using speaker icon component for TTS.
 // LANGUAGE:      JAVASCRIPT (React.js)
 
 import { useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
-import LoadingBar from "./utils/loadingBar.jsx";
+import LoadingBar from "./components/common/LoadingBar.jsx";
+import SpeakerIcon from "./components/common/SpeakerIcon.jsx";
 
-// ✅ Custom hooks for refactoring logic
+// ✅ Reusable hooks
 import useUserSettings from "./hooks/useUserSettings";
 import useSpeech from "./hooks/useSpeech";
 import usePredictionAPI from "./hooks/usePredictionAPI";
@@ -18,7 +15,7 @@ export default function ImageTranslate({ userId = 1 }) {
     const settings = useUserSettings(userId);
     const { speaking, speakText } = useSpeech(settings);
 
-    // Parser function unique to image translation
+    // Parser function for image predictions
     const parseImagePredictions = (data) => {
         const allPredictions = [];
         if (Array.isArray(data)) {
@@ -34,40 +31,39 @@ export default function ImageTranslate({ userId = 1 }) {
         return highestPred;
     };
 
-    // ✅ Shared backend logic (upload, loading, error, predictions)
+    // Shared backend logic
     const { sendFile, predictions, loading, error } = usePredictionAPI(
         "http://127.0.0.1:8000/image/predict",
         parseImagePredictions
     );
 
-    // ✅ Local UI states
     const [file, setFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [prediction, setPrediction] = useState(null);
     const [log, setLog] = useState([]);
 
-    // Handle file input (same UI logic)
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         setPrediction(null);
 
-        if (selectedFile) {
-            const validTypes = ["image/png", "image/jpeg", "image/jpg"];
-            if (!validTypes.includes(selectedFile.type)) {
-                setFile(null);
-                setPreviewUrl(null);
-                alert("Invalid file type. Please upload a PNG or JPG image.");
-                return;
-            }
-            setFile(selectedFile);
-            setPreviewUrl(URL.createObjectURL(selectedFile));
-        } else {
+        if (!selectedFile) {
             setFile(null);
             setPreviewUrl(null);
+            return;
         }
+
+        const validTypes = ["image/png", "image/jpeg", "image/jpg"];
+        if (!validTypes.includes(selectedFile.type)) {
+            alert("Invalid file type. Please upload a PNG or JPG image.");
+            setFile(null);
+            setPreviewUrl(null);
+            return;
+        }
+
+        setFile(selectedFile);
+        setPreviewUrl(URL.createObjectURL(selectedFile));
     };
 
-    // Submit image for prediction
     const handleSubmit = async () => {
         if (!file) return alert("Please select an image first.");
 
@@ -76,7 +72,6 @@ export default function ImageTranslate({ userId = 1 }) {
 
         if (settings?.SPEECH_ENABLED && pred?.class) speakText(pred.class);
 
-        // ✅ Add entry to the log
         setLog((prevLog) => {
             const newEntry = {
                 imageUrl: previewUrl,
@@ -88,8 +83,7 @@ export default function ImageTranslate({ userId = 1 }) {
     };
 
     const handleClearLog = () => setLog([]);
-    const handleRemoveLogEntry = (idx) =>
-        setLog((prev) => prev.filter((_, i) => i !== idx));
+    const handleRemoveLogEntry = (idx) => setLog((prev) => prev.filter((_, i) => i !== idx));
 
     const renderPrediction = (pred) => {
         if (!pred?.class || pred.confidence === undefined) return null;
@@ -117,45 +111,22 @@ export default function ImageTranslate({ userId = 1 }) {
                     Translate
                 </button>
 
-                {/* ✅ Speaker Icon for TTS */}
-                {settings?.SPEECH_ENABLED && (
-                    <span
-                        style={{
-                            marginLeft: "1rem",
-                            verticalAlign: "middle",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "0.25rem",
-                        }}
-                    >
-                        {speaking ? (
-                            <Volume2
-                                size={22}
-                                style={{ color: "#4CAF50", animation: "pulse 1s infinite" }}
-                            />
-                        ) : (
-                            <VolumeX size={22} style={{ color: "#aaa" }} />
-                        )}
-                    </span>
-                )}
+                {/* ✅ Speaker Icon */}
+                <SpeakerIcon
+                    enabled={settings?.SPEECH_ENABLED}
+                    speaking={speaking}
+                    size={22}
+                    style={{ marginLeft: "1rem" }}
+                />
 
-                {/* ✅ Loading bar when processing */}
-                {loading && (
-                    <div style={{ marginTop: "1rem" }}>
-                        <LoadingBar />
-                    </div>
-                )}
+                {loading && <LoadingBar />}
 
                 {previewUrl && (
                     <div style={{ marginTop: "1rem" }}>
                         <img
                             src={previewUrl}
                             alt="Preview"
-                            style={{
-                                maxWidth: "300px",
-                                maxHeight: "300px",
-                                border: "1px solid #ccc",
-                            }}
+                            style={{ maxWidth: "300px", maxHeight: "300px", border: "1px solid #ccc" }}
                         />
                     </div>
                 )}
@@ -170,7 +141,7 @@ export default function ImageTranslate({ userId = 1 }) {
                 )}
             </div>
 
-            {/* Right Panel - Translation Log */}
+            {/* Right Panel — Translation Log */}
             {log.length > 0 && (
                 <div
                     style={{

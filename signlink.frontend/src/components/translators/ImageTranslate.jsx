@@ -1,37 +1,26 @@
-﻿import { useState } from "react";
-import LoadingBar from "../common/LoadingBar.jsx";
+﻿import React, { useState } from "react";
 import SpeakerIcon from "../common/SpeakerIcon.jsx";
-
-// ✅ Reusable hooks
 import useUserSettings from "../../hooks/useUserSettings";
 import useSpeech from "../../hooks/useSpeech";
 import usePredictionAPI from "../../hooks/usePredictionAPI";
 
+import TranslatorLayout from "./shared/TranslatorLayout.jsx";
+import UploadPanel from "./shared/UploadPanel.jsx";
+import PredictionList from "./shared/PredictionList.jsx";
+import TranslationLog from "./shared/TranslationLog.jsx";
+import { parseImagePredictions } from "../../services/parsers";
+
+/**
+ * ImageTranslate refactored:
+ * - UI delegated to shared components
+ * - Parsing delegated to parsers service
+ * - Speech handled by useSpeech hook
+ */
 export default function ImageTranslate({ userId = 1 }) {
     const settings = useUserSettings(userId);
     const { speaking, speakText } = useSpeech(settings);
 
-    // Parser function for image predictions
-    const parseImagePredictions = (data) => {
-        const allPredictions = [];
-        if (Array.isArray(data)) {
-            data.forEach((item) => {
-                item.predictions?.predictions?.forEach((pred) => allPredictions.push(pred));
-            });
-        }
-        let highestPred = null;
-        allPredictions.forEach((pred) => {
-            if (!highestPred || pred.confidence > highestPred.confidence)
-                highestPred = pred;
-        });
-        return highestPred;
-    };
-
-    // Shared backend logic
-    const { sendFile, predictions, loading, error } = usePredictionAPI(
-        "/image/predict",
-        parseImagePredictions
-    );
+    const { sendFile, predictions, loading, error } = usePredictionAPI("/image/predict", parseImagePredictions);
 
     const [file, setFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -39,7 +28,7 @@ export default function ImageTranslate({ userId = 1 }) {
     const [log, setLog] = useState([]);
 
     const handleFileChange = (e) => {
-        const selectedFile = e.target.files[0];
+        const selectedFile = e.target.files?.[0];
         setPrediction(null);
 
         if (!selectedFile) {
@@ -62,10 +51,8 @@ export default function ImageTranslate({ userId = 1 }) {
 
     const handleSubmit = async () => {
         if (!file) return alert("Please select an image first.");
-
         const pred = await sendFile(file);
         setPrediction(pred);
-
         if (settings?.SPEECH_ENABLED && pred?.class) speakText(pred.class);
 
         setLog((prevLog) => {
@@ -95,153 +82,46 @@ export default function ImageTranslate({ userId = 1 }) {
     if (!settings) return <div>Loading user settings...</div>;
 
     return (
-        <div style={{ padding: "2rem", display: "flex", alignItems: "flex-start" }}>
-            {/* Left Panel */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <input type="file" accept="image/*" onChange={handleFileChange} />
-                <button
-                    onClick={handleSubmit}
-                    disabled={loading || !file}
-                    style={{ marginLeft: "1rem" }}
-                >
-                    Translate
-                </button>
-
-                {/* ✅ Speaker Icon */}
-                <SpeakerIcon
-                    enabled={settings?.SPEECH_ENABLED}
-                    speaking={speaking}
-                    size={22}
-                    style={{ marginLeft: "1rem" }}
-                />
-
-                {loading && <LoadingBar />}
-
-                {previewUrl && (
-                    <div style={{ marginTop: "1rem" }}>
-                        <img
-                            src={previewUrl}
-                            alt="Preview"
-                            style={{ maxWidth: "300px", maxHeight: "300px", border: "1px solid #ccc" }}
-                        />
-                    </div>
-                )}
-
-                {error && <p style={{ color: "red" }}>{error}</p>}
-
-                {prediction && (
-                    <div style={{ marginTop: "1rem" }}>
-                        <h3>Prediction:</h3>
-                        {renderPrediction(prediction)}
-                    </div>
-                )}
-            </div>
-
-            {/* Right Panel — Translation Log */}
-            {log.length > 0 && (
-                <div
-                    style={{
-                        marginLeft: "2rem",
-                        minWidth: "540px",
-                        maxWidth: "600px",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-end",
-                    }}
-                >
-                    <div
-                        style={{
-                            width: "100%",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: "1rem",
-                        }}
+        <TranslatorLayout
+            left={
+                <>
+                    <UploadPanel
+                        accept="image/*"
+                        previewUrl={previewUrl}
+                        loading={loading}
+                        onFileChange={handleFileChange}
+                        onSubmit={handleSubmit}
+                        submitLabel="Translate"
+                        disabled={!file}
                     >
-                        <h3 style={{ margin: 0 }}>Translation Log (last 10)</h3>
-                        <button
-                            onClick={handleClearLog}
-                            style={{ background: "#e74c3c", color: "#fff" }}
-                        >
-                            Clear Log
-                        </button>
-                    </div>
-
-                    <div
-                        style={{
-                            width: "100%",
-                            display: "grid",
-                            gridTemplateColumns: "repeat(5, 1fr)",
-                            gap: "1rem",
-                        }}
-                    >
-                        {log.map((entry, idx) => (
-                            <div
-                                key={idx}
-                                style={{
-                                    border: "1px solid #ccc",
-                                    padding: "0.5rem",
-                                    borderRadius: "8px",
-                                    background: "transparent",
-                                    maxWidth: "110px",
-                                    position: "relative",
-                                    minHeight: "170px",
-                                    boxSizing: "border-box",
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        position: "relative",
-                                        width: "100%",
-                                        display: "flex",
-                                        justifyContent: "center",
-                                    }}
-                                >
-                                    <img
-                                        src={entry.imageUrl}
-                                        alt={`Log Preview ${idx + 1}`}
-                                        style={{
-                                            maxWidth: "100%",
-                                            maxHeight: "80px",
-                                            display: "block",
-                                            borderRadius: "4px",
-                                        }}
-                                    />
-                                    <button
-                                        onClick={() => handleRemoveLogEntry(idx)}
-                                        style={{
-                                            position: "absolute",
-                                            top: "6px",
-                                            right: "6px",
-                                            background: "#e74c3c",
-                                            color: "#fff",
-                                            border: "none",
-                                            borderRadius: "4px",
-                                            padding: "2px 8px",
-                                            cursor: "pointer",
-                                            fontSize: "0.9em",
-                                            boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
-                                        }}
-                                        title="Remove this entry"
-                                    >
-                                        ✖
-                                    </button>
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: "0.8em",
-                                        color: "#555",
-                                        margin: "0.25rem 0",
-                                    }}
-                                >
-                                    {entry.timestamp}
-                                </div>
-                                <div>{renderPrediction(entry.prediction)}</div>
+                        <SpeakerIcon enabled={settings?.SPEECH_ENABLED} speaking={speaking} size={22} style={{ marginLeft: "1rem" }} />
+                        {error && <p style={{ color: "red" }}>{error}</p>}
+                        {prediction && (
+                            <div style={{ marginTop: "1rem" }}>
+                                <h3>Prediction:</h3>
+                                {renderPrediction(prediction)}
                             </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
+                        )}
+                    </UploadPanel>
+                </>
+            }
+            right={
+                <TranslationLog
+                    log={log}
+                    onClear={handleClearLog}
+                    renderEntry={(entry, idx) => (
+                        <>
+                            <div style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center" }}>
+                                <img src={entry.imageUrl} alt={`Log Preview ${idx + 1}`} style={{ maxWidth: "100%", maxHeight: "80px", display: "block", borderRadius: "4px" }} />
+                                <button onClick={() => handleRemoveLogEntry(idx)} style={{ position: "absolute", top: "6px", right: "6px", background: "#e74c3c", color: "#fff", border: "none", borderRadius: "4px", padding: "2px 8px", cursor: "pointer", fontSize: "0.9em", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }} title="Remove this entry">✖</button>
+                            </div>
+                            <div style={{ fontSize: "0.8em", color: "#555", margin: "0.25rem 0" }}>{entry.timestamp}</div>
+                            <div>{renderPrediction(entry.prediction)}</div>
+                        </>
+                    )}
+                    containerStyle={{ minWidth: "540px", maxWidth: "600px" }}
+                />
+            }
+        />
     );
 }

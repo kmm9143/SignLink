@@ -1,6 +1,5 @@
-// hooks/useSpeech.js
 import { useState } from "react";
-import { speak } from "../utils/speech";
+import { speak } from "../services/ttsService";
 
 export default function useSpeech(settings) {
     const [speaking, setSpeaking] = useState(false);

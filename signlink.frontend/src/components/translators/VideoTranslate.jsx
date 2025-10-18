@@ -10,11 +10,6 @@ import PredictionList from "./shared/PredictionList.jsx";
 import TranslationLog from "./shared/TranslationLog.jsx";
 import { parseVideoPredictions } from "../../services/parsers";
 
-/**
- * VideoTranslate refactored:
- * - parser moved to parsers service
- * - UI uses shared components
- */
 export default function VideoTranslate({ userId = 1 }) {
     const settings = useUserSettings(userId);
     const { speaking, speakText } = useSpeech(settings);
@@ -25,18 +20,22 @@ export default function VideoTranslate({ userId = 1 }) {
     const [previewUrl, setPreviewUrl] = useState(null);
     const [progress, setProgress] = useState(null);
     const [log, setLog] = useState([]);
+    const [validationError, setValidationError] = useState(null);
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files?.[0];
+        setValidationError(null);
+
         if (!selectedFile) {
             setFile(null);
             setPreviewUrl(null);
             return;
         }
 
-        const validTypes = ["video/mp4", "video/avi", "video/mov", "video/mpeg"];
+        const validTypes = ["video/mp4", "video/avi", "video/quicktime", "video/mov", "video/mpeg"];
+        // note: some browsers use "video/quicktime" for MOV
         if (!validTypes.includes(selectedFile.type)) {
-            alert("Invalid file type. Please upload an MP4, MOV, or AVI video.");
+            setValidationError("Invalid file type. Please upload an MP4, MOV, or AVI video.");
             setFile(null);
             setPreviewUrl(null);
             return;
@@ -47,7 +46,11 @@ export default function VideoTranslate({ userId = 1 }) {
     };
 
     const handleSubmit = async () => {
-        if (!file) return alert("Please select a video first.");
+        setValidationError(null);
+        if (!file) {
+            setValidationError("Please select a video first.");
+            return;
+        }
         setProgress(0);
         const preds = await sendFile(file, (event) => {
             if (event.total) {
@@ -104,6 +107,7 @@ export default function VideoTranslate({ userId = 1 }) {
                 )}
             >
                 <SpeakerIcon enabled={settings?.SPEECH_ENABLED} speaking={speaking} size={22} style={{ marginLeft: "1rem" }} />
+                {validationError && <p style={{ color: "red", marginTop: "0.5rem" }}>{validationError}</p>}
                 {error && <p style={{ color: "red" }}>{error}</p>}
 
                 <PredictionList

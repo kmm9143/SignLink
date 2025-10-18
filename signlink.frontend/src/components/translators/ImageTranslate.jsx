@@ -10,12 +10,6 @@ import PredictionList from "./shared/PredictionList.jsx";
 import TranslationLog from "./shared/TranslationLog.jsx";
 import { parseImagePredictions } from "../../services/parsers";
 
-/**
- * ImageTranslate refactored:
- * - UI delegated to shared components
- * - Parsing delegated to parsers service
- * - Speech handled by useSpeech hook
- */
 export default function ImageTranslate({ userId = 1 }) {
     const settings = useUserSettings(userId);
     const { speaking, speakText } = useSpeech(settings);
@@ -26,10 +20,12 @@ export default function ImageTranslate({ userId = 1 }) {
     const [previewUrl, setPreviewUrl] = useState(null);
     const [prediction, setPrediction] = useState(null);
     const [log, setLog] = useState([]);
+    const [validationError, setValidationError] = useState(null);
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files?.[0];
         setPrediction(null);
+        setValidationError(null);
 
         if (!selectedFile) {
             setFile(null);
@@ -39,7 +35,7 @@ export default function ImageTranslate({ userId = 1 }) {
 
         const validTypes = ["image/png", "image/jpeg", "image/jpg"];
         if (!validTypes.includes(selectedFile.type)) {
-            alert("Invalid file type. Please upload a PNG or JPG image.");
+            setValidationError("Invalid file type. Please upload a PNG or JPG image.");
             setFile(null);
             setPreviewUrl(null);
             return;
@@ -50,7 +46,11 @@ export default function ImageTranslate({ userId = 1 }) {
     };
 
     const handleSubmit = async () => {
-        if (!file) return alert("Please select an image first.");
+        setValidationError(null);
+        if (!file) {
+            setValidationError("Please select an image first.");
+            return;
+        }
         const pred = await sendFile(file);
         setPrediction(pred);
         if (settings?.SPEECH_ENABLED && pred?.class) speakText(pred.class);
@@ -95,6 +95,7 @@ export default function ImageTranslate({ userId = 1 }) {
                         disabled={!file}
                     >
                         <SpeakerIcon enabled={settings?.SPEECH_ENABLED} speaking={speaking} size={22} style={{ marginLeft: "1rem" }} />
+                        {validationError && <p style={{ color: "red", marginTop: "0.5rem" }}>{validationError}</p>}
                         {error && <p style={{ color: "red" }}>{error}</p>}
                         {prediction && (
                             <div style={{ marginTop: "1rem" }}>

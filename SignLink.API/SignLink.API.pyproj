@@ -25,6 +25,7 @@
     <Compile Include="app.py" />
     <Compile Include="models\base.py" />
     <Compile Include="models\user_information.py" />
+    <Compile Include="models\translation_history.py" />
     <Compile Include="routers\auth.py" />
     <Compile Include="crud.py" />
     <Compile Include="models\user_settings.py" />

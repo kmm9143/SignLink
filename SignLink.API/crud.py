@@ -56,8 +56,11 @@ def get_settings(db: Session, user_id: int):
 def log_translation(db: Session, user_id: int, input_type: str, recognized_text: str, filename: str = None):
     """
     Create a new translation history record linked to a specific user.
-    Ensures only the 20 most recent 'image' translations are kept per user.
-    Optionally stores filename for image and video uploads.
+    - Keeps only a limited number of recent entries per input type:
+        * 20 for 'image'
+        * 6 for 'video'
+        * 3 for 'webcam' (live camera recordings)
+    - Stores filename if applicable.
     """
     # Ensure the user exists before logging a translation
     user = db.query(UserInformation).filter(UserInformation.USER_ID == user_id).first()
@@ -69,15 +72,23 @@ def log_translation(db: Session, user_id: int, input_type: str, recognized_text:
         new_entry = UserTranslationHistory(
             USER_ID=user_id,
             INPUT_TYPE=input_type,
-            FILENAME=filename if input_type.lower() in ("image", "video") else None,
+            FILENAME=filename if input_type.lower() in ("image", "video", "webcam") else None,
             RECOGNIZED_TEXT=recognized_text
         )
         db.add(new_entry)
         db.commit()
         db.refresh(new_entry)
 
-        # Step 2: Keep only 20 latest per input type
-        limit_per_type = 6 if input_type.lower() == "video" else 20
+        # Step 2: Determine record retention limits by input type
+        input_type_lower = input_type.lower()
+        if input_type_lower == "webcam":
+            limit_per_type = 3
+        elif input_type_lower == "video":
+            limit_per_type = 6
+        else:
+            limit_per_type = 20
+
+        # Step 3: Delete oldest records beyond the limit
         subquery = (
             db.query(UserTranslationHistory.ID)
             .filter(
@@ -88,7 +99,6 @@ def log_translation(db: Session, user_id: int, input_type: str, recognized_text:
             .offset(limit_per_type)
             .subquery()
         )
-
 
         db.query(UserTranslationHistory).filter(UserTranslationHistory.ID.in_(subquery)).delete(synchronize_session=False)
         db.commit()

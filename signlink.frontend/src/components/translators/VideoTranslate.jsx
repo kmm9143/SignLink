@@ -51,6 +51,7 @@ export default function VideoTranslate({ userId = 1 }) {
             setValidationError("Please select a video first.");
             return;
         }
+
         setProgress(0);
         const preds = await sendFile(file, (event) => {
             if (event.total) {
@@ -59,13 +60,47 @@ export default function VideoTranslate({ userId = 1 }) {
             }
         });
 
-        if (settings?.SPEECH_ENABLED && preds?.length > 0) {
-            const combinedText = preds.map((p) => p.label).join(" ");
+        if (!preds || preds.length === 0) {
+            setValidationError("No predictions were returned.");
+            setProgress(null);
+            return;
+        }
+
+        // Combine all recognized labels into one string (e.g., "H E L L O")
+        const combinedText = preds.map((p) => p.label).join(" ");
+
+        // Text-to-speech output if enabled
+        if (settings?.SPEECH_ENABLED) {
             speakText(combinedText);
         }
 
+        // ✅ Save to backend as a single record
+        try {
+            await fetch("http://localhost:8000/translations/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    input_type: "video",
+                    recognized_text: combinedText,
+                    filename: file?.name || null,
+                }),
+            });
+        } catch (err) {
+            console.warn("Failed to save video translation:", err);
+        }
+
+        // ✅ Update local log (keep 3 in UI, 6 stored in DB)
         setLog((prevLog) => {
-            const newEntry = { videoUrl: previewUrl, predictions: preds, timestamp: new Date().toLocaleString(), fileName: file.name || "prediction.mp4" };
+            const newEntry = {
+                videoUrl: previewUrl,
+                predictions: preds,
+                timestamp: new Date().toLocaleString(),
+                fileName: file.name || "prediction.mp4",
+                combinedText: combinedText,
+            };
             return [newEntry, ...prevLog].slice(0, 3);
         });
 

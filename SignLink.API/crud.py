@@ -77,6 +77,7 @@ def log_translation(db: Session, user_id: int, input_type: str, recognized_text:
         db.refresh(new_entry)
 
         # Step 2: Keep only 20 latest per input type
+        limit_per_type = 6 if input_type.lower() == "video" else 20
         subquery = (
             db.query(UserTranslationHistory.ID)
             .filter(
@@ -84,9 +85,10 @@ def log_translation(db: Session, user_id: int, input_type: str, recognized_text:
                 UserTranslationHistory.INPUT_TYPE == input_type
             )
             .order_by(UserTranslationHistory.CREATED_AT.desc())
-            .offset(20)
+            .offset(limit_per_type)
             .subquery()
         )
+
 
         db.query(UserTranslationHistory).filter(UserTranslationHistory.ID.in_(subquery)).delete(synchronize_session=False)
         db.commit()

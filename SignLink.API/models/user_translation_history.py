@@ -1,4 +1,4 @@
-# DESCRIPTION:  This script defines the SQLAlchemy ORM model for the TRANSLATION_HISTORY table.
+# DESCRIPTION:  This script defines the SQLAlchemy ORM model for the USER_TRANSLATION_HISTORY table.
 #               It represents user translation events recorded in the database, including
 #               input type, recognized text, and creation timestamp. Each record links back
 #               to a user in the USER_INFORMATION table.
@@ -15,6 +15,7 @@ from sqlalchemy import Column, Text, DateTime, ForeignKey, BigInteger
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from datetime import datetime
 import uuid
 
 # -------------------------------------------------------------------
@@ -25,14 +26,14 @@ from models.base import Base  # Declarative base used across models
 # -------------------------------------------------------------------
 # Step 3: Define TranslationHistory model mapped to TRANSLATION_HISTORY table
 # -------------------------------------------------------------------
-class TranslationHistory(Base):
+class UserTranslationHistory(Base):
     """
     SQLAlchemy model representing user translation log entries.
     Each record stores the recognized text, input type, timestamp,
     and user association.
     """
 
-    __tablename__ = "TRANSLATION_HISTORY"  # Define table name
+    __tablename__ = "USER_TRANSLATION_HISTORY"  # Define table name
 
     # -------------------------------------------------------------------
     # Step 3a: Define table columns
@@ -40,10 +41,11 @@ class TranslationHistory(Base):
     ID = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False)
     USER_ID = Column(BigInteger, ForeignKey("USER_INFORMATION.USER_ID"), nullable=False)
     INPUT_TYPE = Column(Text, nullable=False)
+    FILENAME = Column(Text, nullable=True)
     RECOGNIZED_TEXT = Column(Text, nullable=False)
-    CREATED_AT = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    CREATED_AT = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # -------------------------------------------------------------------
     # Step 3b: Define ORM relationship to UserInformation
     # -------------------------------------------------------------------
-    user = relationship("UserInformation", back_populates="translation_history")
+    user = relationship("UserInformation", back_populates="user_translation_history")

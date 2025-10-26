@@ -51,18 +51,45 @@ export default function ImageTranslate({ userId = 1 }) {
             setValidationError("Please select an image first.");
             return;
         }
+
+        // Run prediction (main operation)
         const pred = await sendFile(file);
         setPrediction(pred);
+
+        // Speak if enabled
         if (settings?.SPEECH_ENABLED && pred?.class) speakText(pred.class);
 
+        // Update local UI log
         setLog((prevLog) => {
             const newEntry = {
                 imageUrl: previewUrl,
                 prediction: pred,
                 timestamp: new Date().toLocaleString(),
             };
-            return [newEntry, ...prevLog].slice(0, 10);
+            return [newEntry, ...prevLog].slice(0, 20); // Keep max 20
         });
+
+        // ⚡ Save translation asynchronously to backend (fire-and-forget)
+        if (pred?.class) {
+            (async () => {
+                try {
+                    await fetch("http://localhost:8000/translations/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            input_type: "image",
+                            recognized_text: pred.class,
+                            filename: file?.name || null,
+                        }),
+                    });
+                } catch (err) {
+                    console.warn("Failed to save translation history:", err);
+                }
+            })();
+        }
     };
 
     const handleClearLog = () => setLog([]);

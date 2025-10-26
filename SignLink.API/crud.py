@@ -1,65 +1,130 @@
-# DESCRIPTION:  This script defines CRUD (Create, Read, Update, Delete) operations for user-related data models.
-#               Specifically, it manages the creation, retrieval, and updating of user settings stored in the
-#               database, ensuring that each settings record is correctly linked to a corresponding user in
-#               the USER_INFORMATION table.
+﻿# DESCRIPTION:  This script defines CRUD (Create, Read, Update, Delete) operations for user-related data models,
+#               including user settings and translation history. It manages database transactions safely,
+#               ensuring foreign key integrity between USER_INFORMATION, USER_SETTINGS, and TRANSLATION_HISTORY.
 # LANGUAGE:     PYTHON
-# SOURCE(S):    [1] SQLAlchemy Documentation. (n.d.). ORM Query API. Retrieved October 3, 2025, from https://docs.sqlalchemy.org/en/20/orm/queryguide/query.html
-#               [2] SQLAlchemy Documentation. (n.d.). Session Basics. Retrieved October 3, 2025, from https://docs.sqlalchemy.org/en/20/orm/session_basics.html
-#               [3] FastAPI Documentation. (n.d.). SQL (Relational) Databases. Retrieved October 3, 2025, from https://fastapi.tiangolo.com/tutorial/sql-databases/
-#               [4] Python Software Foundation. (n.d.). Exceptions. Retrieved October 3, 2025, from https://docs.python.org/3/tutorial/errors.html
+# SOURCE(S):    [1] SQLAlchemy Documentation. (n.d.). ORM Query API.
+#               [2] SQLAlchemy Documentation. (n.d.). Session Basics.
+#               [3] FastAPI Documentation. (n.d.). SQL (Relational) Databases.
+#               [4] Python Software Foundation. (n.d.). Exceptions.
 
 # -------------------------------------------------------------------
 # Step 1: Import required dependencies and ORM models
 # -------------------------------------------------------------------
-from sqlalchemy.orm import Session                             # Import Session class for database interactions
-from models.user_settings import UserSettings                  # Import UserSettings model for settings table operations
-from models.user_information import UserInformation             # Import UserInformation model for user table validation
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+from models.user_settings import UserSettings
+from models.user_information import UserInformation
+from models.user_translation_history import UserTranslationHistory
 
 # -------------------------------------------------------------------
-# Step 2: Define function to create or update user settings
+# Step 2: User Settings CRUD Operations
 # -------------------------------------------------------------------
 def create_or_update_settings(db: Session, user_id: int, speech_enabled: bool, webcam_enabled: bool):
     """
-    Create or update user settings for a given user_id (foreign key from USER_INFORMATION).
+    Create or update user settings for a given user_id.
     Ensures that the user exists before modifying or creating related settings.
     """
-    # Verify that a valid user exists for the given user_id
     user = db.query(UserInformation).filter(UserInformation.USER_ID == user_id).first()
-    if not user:                                               # If no matching user record found
-        raise ValueError(f"User with id {user_id} does not exist")  # Raise an error to prevent orphan settings creation
+    if not user:
+        raise ValueError(f"User with id {user_id} does not exist")
 
-    # Query for existing user settings based on user_id
     settings = db.query(UserSettings).filter(UserSettings.USER_ID == user_id).first()
 
-    if settings:                                               # If user settings already exist
-        # Update existing settings record
-        settings.SPEECH_ENABLED = speech_enabled               # Update speech preference
-        settings.WEBCAM_ENABLED = webcam_enabled               # Update webcam preference
+    if settings:
+        settings.SPEECH_ENABLED = speech_enabled
+        settings.WEBCAM_ENABLED = webcam_enabled
     else:
-        # Create a new UserSettings record linked to this user
         settings = UserSettings(
-            USER_ID=user_id,                                   # Link settings to the user by foreign key
-            SPEECH_ENABLED=speech_enabled,                     # Set speech setting
-            WEBCAM_ENABLED=webcam_enabled                      # Set webcam setting
+            USER_ID=user_id,
+            SPEECH_ENABLED=speech_enabled,
+            WEBCAM_ENABLED=webcam_enabled
         )
-        db.add(settings)                                       # Add new record to the database session
+        db.add(settings)
 
-    # Commit changes to the database to persist updates
     db.commit()
-
-    # Refresh the session to get updated data from the database
     db.refresh(settings)
-
-    # Return the newly created or updated settings record
     return settings
 
-# -------------------------------------------------------------------
-# Step 3: Define function to retrieve user settings by user_id
-# -------------------------------------------------------------------
+
 def get_settings(db: Session, user_id: int):
-    """
-    Retrieve settings for a given user_id.
-    Returns the corresponding UserSettings object or None if not found.
-    """
-    # Query the UserSettings table and filter by user_id foreign key
+    """Retrieve settings for a given user_id."""
     return db.query(UserSettings).filter(UserSettings.USER_ID == user_id).first()
+
+# -------------------------------------------------------------------
+# Step 3: Translation History CRUD Operations
+# -------------------------------------------------------------------
+def log_translation(db: Session, user_id: int, input_type: str, recognized_text: str, filename: str = None):
+    """
+    Create a new translation history record linked to a specific user.
+    Ensures only the 20 most recent 'image' translations are kept per user.
+    Optionally stores filename for image and video uploads.
+    """
+    # Ensure the user exists before logging a translation
+    user = db.query(UserInformation).filter(UserInformation.USER_ID == user_id).first()
+    if not user:
+        raise ValueError(f"User with id {user_id} does not exist")
+
+    try:
+        # Step 1: Add new translation entry
+        new_entry = UserTranslationHistory(
+            USER_ID=user_id,
+            INPUT_TYPE=input_type,
+            FILENAME=filename if input_type.lower() in ("image", "video") else None,
+            RECOGNIZED_TEXT=recognized_text
+        )
+        db.add(new_entry)
+        db.commit()
+        db.refresh(new_entry)
+
+        # Step 2: Keep only 20 latest per input type
+        subquery = (
+            db.query(UserTranslationHistory.ID)
+            .filter(
+                UserTranslationHistory.USER_ID == user_id,
+                UserTranslationHistory.INPUT_TYPE == input_type
+            )
+            .order_by(UserTranslationHistory.CREATED_AT.desc())
+            .offset(20)
+            .subquery()
+        )
+
+        db.query(UserTranslationHistory).filter(UserTranslationHistory.ID.in_(subquery)).delete(synchronize_session=False)
+        db.commit()
+
+        return new_entry
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise e
+
+def get_translation_history(db: Session, user_id: int, limit: int = 10):
+    """
+    Retrieve the latest translation history entries for a user, limited to the most recent ones.
+    """
+    try:
+        return (
+            db.query(UserTranslationHistory)
+            .filter(UserTranslationHistory.USER_ID == user_id)
+            .order_by(UserTranslationHistory.TIMESTAMP.desc())
+            .limit(limit)
+            .all()
+        )
+    except SQLAlchemyError as e:
+        raise e
+
+
+def clear_translation_history(db: Session, user_id: int):
+    """
+    Delete all translation history records for a given user.
+    """
+    try:
+        deleted_count = (
+            db.query(UserTranslationHistory)
+            .filter(UserTranslationHistory.USER_ID == user_id)
+            .delete()
+        )
+        db.commit()
+        return {"deleted_records": deleted_count}
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise e

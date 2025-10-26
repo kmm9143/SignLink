@@ -60,7 +60,7 @@ class UserLogin(BaseModel):
 # -------------------------------------------------------------------
 
 # -----------------------------
-# (5a) POST /signup — Register a new user
+# (5a) POST /signup â€” Register a new user
 # -----------------------------
 @router.post("/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):
@@ -110,7 +110,7 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     }
 
 # -----------------------------
-# (5b) POST /login — Authenticate an existing user
+# (5b) POST /login - Authenticate an existing user
 # -----------------------------
 @router.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
@@ -119,7 +119,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     Steps:
     1. Retrieve user record by username.
     2. Verify provided password against stored hash.
-    3. Return user profile data on successful login.
+    3. Return user profile data on successful login.]
     Raises 401 error for invalid credentials.
     """
     db_user = db.query(UserInformation).filter(UserInformation.USERNAME == user.username).first()

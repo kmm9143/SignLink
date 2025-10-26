@@ -48,3 +48,4 @@ class UserInformation(Base):
     # Step 3b: Define ORM relationship to UserSettings
     # -------------------------------------------------------------------
     settings = relationship("UserSettings", back_populates="user", uselist=False)  # One-to-one relationship with UserSettings
+    user_translation_history = relationship("UserTranslationHistory", back_populates="user", cascade="all, delete-orphan")

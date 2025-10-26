@@ -25,11 +25,12 @@
     <Compile Include="app.py" />
     <Compile Include="models\base.py" />
     <Compile Include="models\user_information.py" />
-    <Compile Include="models\translation_history.py" />
+    <Compile Include="models\user_translation_history.py" />
     <Compile Include="routers\auth.py" />
     <Compile Include="crud.py" />
     <Compile Include="models\user_settings.py" />
     <Compile Include="routers\settings.py" />
+    <Compile Include="routers\translation_history.py" />
     <Compile Include="routers\__init__.py" />
     <Compile Include="tests\test_video_preprocessing.py" />
     <Compile Include="tests\test_translate_video.py" />

@@ -1,7 +1,6 @@
 ﻿// DESCRIPTION:  This React component serves as the main entry point for the ASL Translator web application.
 //                It manages user authentication, translation mode switching (image, webcam, or video),
-//                and access to user-specific settings. The app integrates multiple child components,
-//                including authentication, translation modules, and settings management.
+//                and access to user-specific settings and translation history.
 // LANGUAGE:     JAVASCRIPT (React.js)
 // SOURCE(S):    [1] React Documentation. (n.d.). Using the State Hook. Retrieved September 27, 2025, from https://react.dev/reference/react/useState
 //               [2] React Documentation. (n.d.). Conditional Rendering. Retrieved September 27, 2025, from https://react.dev/learn/conditional-rendering
@@ -11,11 +10,12 @@
 // Step 1: Import React dependencies and local components
 // -----------------------------------------------------------------------------
 import { useState } from 'react';
-import ImageTranslate from './components/translators/ImageTranslate.jsx';    // Component for image-based ASL translation
-import WebcamTranslate from './components/translators/WebcamTranslate.jsx';  // Component for webcam-based ASL translation
-import VideoTranslate from './components/translators/VideoTranslate.jsx';    // New component for video-based ASL translation
-import UserSettings from './components/common/UserSettings.jsx';        // Component for managing user preferences/settings
-import Auth from './Auth.jsx';                        // Component for user login/signup functionality
+import ImageTranslate from './components/translators/ImageTranslate.jsx';    // Image-based ASL translation
+import WebcamTranslate from './components/translators/WebcamTranslate.jsx';  // Webcam-based ASL translation
+import VideoTranslate from './components/translators/VideoTranslate.jsx';    // Video-based ASL translation
+import UserSettings from './components/common/UserSettings.jsx';             // User settings panel
+import TranslationHistory from './components/common/TranslationHistory.jsx'; // Translation history panel
+import Auth from './Auth.jsx';                                                // Authentication component
 
 // -----------------------------------------------------------------------------
 // Step 2: Define main App component
@@ -24,15 +24,16 @@ export default function App() {
     // -------------------------------------------------------------------------
     // State variables
     // -------------------------------------------------------------------------
-    const [user, setUser] = useState(null);           // Holds the logged-in user info (retrieved from backend)
-    const [mode, setMode] = useState('image');        // Current translation mode: "image", "webcam", or "video"
-    const [showSettings, setShowSettings] = useState(false); // Boolean to toggle the settings panel visibility
+    const [user, setUser] = useState(null);                // Logged-in user info
+    const [mode, setMode] = useState('image');             // Current translation mode
+    const [showSettings, setShowSettings] = useState(false); // Show/hide settings panel
+    const [showHistory, setShowHistory] = useState(false);   // Show/hide translation history panel
 
     // -------------------------------------------------------------------------
     // Step 3: Conditional rendering - authentication check
     // -------------------------------------------------------------------------
-    if (!user) {                                      // If no user is logged in
-        // Render Auth component and pass callback to update user state after login
+    if (!user) {
+        // If not logged in, render Auth component
         return <Auth onLogin={(userData) => setUser(userData)} />;
     }
 
@@ -49,12 +50,16 @@ export default function App() {
             </p>
 
             {/* -----------------------------------------------------------------
-                Top navigation buttons: switch translation modes and open settings
+                Navigation Buttons: Switch translation modes, open settings/history
             ----------------------------------------------------------------- */}
             <div style={{ marginBottom: '1rem' }}>
                 {/* Image Mode */}
                 <button
-                    onClick={() => setMode('image')}
+                    onClick={() => {
+                        setMode('image');
+                        setShowSettings(false);
+                        setShowHistory(false);
+                    }}
                     style={{
                         marginRight: '1rem',
                         backgroundColor: mode === 'image' ? '#ccc' : ''
@@ -65,7 +70,11 @@ export default function App() {
 
                 {/* Webcam Mode */}
                 <button
-                    onClick={() => setMode('webcam')}
+                    onClick={() => {
+                        setMode('webcam');
+                        setShowSettings(false);
+                        setShowHistory(false);
+                    }}
                     style={{
                         marginRight: '1rem',
                         backgroundColor: mode === 'webcam' ? '#ccc' : ''
@@ -76,7 +85,11 @@ export default function App() {
 
                 {/* Video Mode */}
                 <button
-                    onClick={() => setMode('video')}
+                    onClick={() => {
+                        setMode('video');
+                        setShowSettings(false);
+                        setShowHistory(false);
+                    }}
                     style={{
                         marginRight: '1rem',
                         backgroundColor: mode === 'video' ? '#ccc' : ''
@@ -87,7 +100,10 @@ export default function App() {
 
                 {/* Settings Button */}
                 <button
-                    onClick={() => setShowSettings(!showSettings)}
+                    onClick={() => {
+                        setShowSettings(!showSettings);
+                        setShowHistory(false);
+                    }}
                     style={{
                         marginRight: '1rem',
                         backgroundColor: showSettings ? '#ccc' : ''
@@ -95,31 +111,69 @@ export default function App() {
                 >
                     Settings
                 </button>
+
+                {/* Translation History Button */}
+                <button
+                    onClick={() => {
+                        setShowHistory(!showHistory);
+                        setShowSettings(false);
+                    }}
+                    style={{
+                        marginRight: '1rem',
+                        backgroundColor: showHistory ? '#ccc' : ''
+                    }}
+                >
+                    Translation History
+                </button>
             </div>
 
             {/* -----------------------------------------------------------------
-                Step 5: Conditional content rendering (translator or settings)
+                Step 5: Conditional content rendering
             ----------------------------------------------------------------- */}
-            {!showSettings && (
+
+            {/* Translator views (only shown when settings/history are hidden) */}
+            {!showSettings && !showHistory && (
                 <>
                     {mode === 'image' && <ImageTranslate userId={user.id} />}
                     {mode === 'webcam' && <WebcamTranslate userId={user.id} />}
-                    {mode === 'video' && <VideoTranslate userId={user.id} />} {/* Video mode */}
+                    {mode === 'video' && <VideoTranslate userId={user.id} />}
                 </>
             )}
 
+            {/* Settings Panel */}
             {showSettings && (
-                <div style={{
-                    border: '1px solid #ccc',
-                    padding: '1rem',
-                    marginTop: '1rem'
-                }}>
+                <div
+                    style={{
+                        border: '1px solid #ccc',
+                        padding: '1rem',
+                        marginTop: '1rem'
+                    }}
+                >
                     <UserSettings userId={user.id} />
                     <button
                         onClick={() => setShowSettings(false)}
                         style={{ marginTop: '1rem' }}
                     >
                         Close Settings
+                    </button>
+                </div>
+            )}
+
+            {/* Translation History Panel */}
+            {showHistory && (
+                <div
+                    style={{
+                        border: '1px solid #ccc',
+                        padding: '1rem',
+                        marginTop: '1rem'
+                    }}
+                >
+                    <TranslationHistory userId={user.id} />
+                    <button
+                        onClick={() => setShowHistory(false)}
+                        style={{ marginTop: '1rem' }}
+                    >
+                        Close History
                     </button>
                 </div>
             )}

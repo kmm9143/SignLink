@@ -23,6 +23,7 @@ from routers.translate_image import router as image_router                  # Im
 from routers.translate_video import router as video_router                  # Import video translation router
 from routers.translate_webcam import router as webcam_router                # Import webcam translation router
 from routers.settings import router as settings_router
+from routers.translation_history import router as history_router
 from routers.auth import router as auth_router
 
 from database import engine, Base
@@ -35,8 +36,10 @@ app = FastAPI(title="SignLink API")                                 # Create Fas
 # Step 3: Configure CORS (Cross-Origin Resource Sharing)
 # -----------------------------------------------------------------------------------
 origins = [
-    "http://localhost:51232",                                       # Allow local frontend (localhost)
-    "http://127.0.0.1:51232"                                        # Allow local frontend (127.0.0.1)
+    "http://localhost:51233",  
+    "http://127.0.0.1:51233",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
 ]
 
 app.add_middleware(
@@ -54,6 +57,7 @@ app.include_router(image_router)                                # image translat
 app.include_router(video_router)                                # video translation
 app.include_router(webcam_router)                               # webcam translation
 app.include_router(settings_router)                             # user settings
+app.include_router(history_router)
 app.include_router(auth_router)  # authentication
 
 # -----------------------------------------------------------------------------------

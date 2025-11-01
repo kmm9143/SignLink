@@ -14,3 +14,4 @@ python-dotenv==1.2.1
 python-multipart==0.0.9
 SQLAlchemy==2.0.44
 uvicorn==0.38.0
+pydantic[email]

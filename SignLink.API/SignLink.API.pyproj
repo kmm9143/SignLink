@@ -32,10 +32,12 @@
     <Compile Include="routers\settings.py" />
     <Compile Include="routers\translation_history.py" />
     <Compile Include="routers\__init__.py" />
-    <Compile Include="tests\test_video_preprocessing.py" />
-    <Compile Include="tests\test_translate_video.py" />
-    <Compile Include="tests\test_translate_webcam.py" />
-    <Compile Include="tests\test_translate_image.py" />
+    <Compile Include="tests\conftest.py" />
+    <Compile Include="tests\test_us6_translation_history.py" />
+    <Compile Include="tests\__init__.py" />
+    <Compile Include="tests\test_us2_translate_video.py" />
+    <Compile Include="tests\test_us3_translate_webcam.py" />
+    <Compile Include="tests\test_us1_translate_image.py" />
     <Compile Include="routers\translate_image.py" />
     <Compile Include="routers\translate_video.py" />
     <Compile Include="routers\translate_webcam.py" />
@@ -46,15 +48,40 @@
     <Compile Include="utils\__init__.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".coveragerc" />
+    <Content Include=".github\workflows\test.yml" />
+    <Content Include=".venv\pyvenv.cfg" />
+    <Content Include=".venv\Scripts\python.exe" />
+    <Content Include=".venv\Scripts\pythonw.exe" />
+    <Content Include="pytest.ini" />
     <Content Include="requirements.txt" />
     <Content Include=".env" />
-    <Content Include="tests\ASL_Short_Video.mp4" />
+    <Content Include="tests\test_data\ASL_A.png" />
+    <Content Include="tests\test_data\ASL_O.png" />
+    <Content Include="tests\test_data\ASL_Short_Video.mp4" />
+    <Content Include="tests\test_data\ASL_V.png" />
+    <Content Include="venv310\pyvenv.cfg" />
+    <Content Include="venv310\Scripts\python.exe" />
+    <Content Include="venv310\Scripts\pythonw.exe" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include=".github\" />
+    <Folder Include=".github\workflows\" />
+    <Folder Include=".venv\" />
+    <Folder Include=".venv\Include\" />
+    <Folder Include=".venv\Lib\" />
+    <Folder Include=".venv\Lib\site-packages\" />
+    <Folder Include=".venv\Scripts\" />
     <Folder Include="models\" />
     <Folder Include="routers\" />
+    <Folder Include="tests\test_data\" />
     <Folder Include="utils\" />
     <Folder Include="tests\" />
+    <Folder Include="venv310\" />
+    <Folder Include="venv310\Include\" />
+    <Folder Include="venv310\Lib\" />
+    <Folder Include="venv310\Lib\site-packages\" />
+    <Folder Include="venv310\Scripts\" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.10" />

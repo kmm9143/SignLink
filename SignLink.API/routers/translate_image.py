@@ -34,7 +34,12 @@ router = APIRouter(prefix="/image", tags=["image"])               # Define API r
 hands = init_hands(static_image_mode=True)                       # Use static mode for single image uploads
 
 # -------------------------------------------------------------------
-# Step 5: Define API endpoint for ASL prediction
+# Step 5: Define allowed file types
+# -------------------------------------------------------------------
+ALLOWED_EXTENSIONS = (".png", ".jpg", ".jpeg")
+
+# -------------------------------------------------------------------
+# Step 6: Define API endpoint for ASL prediction
 # -------------------------------------------------------------------
 @router.post("/predict")
 async def predict_image(file: UploadFile = File(...)):
@@ -42,33 +47,40 @@ async def predict_image(file: UploadFile = File(...)):
     Predict ASL letter from uploaded image using MediaPipe preprocessing and Roboflow model.
     
     Steps:
-    1. Read uploaded file into memory.
-    2. Decode image bytes into OpenCV BGR frame.
-    3. Crop hand region using MediaPipe landmarks.
-    4. Send cropped image to Roboflow for ASL prediction.
-    5. Return prediction result as JSON.
+    1. Validate file type.
+    2. Read uploaded file into memory.
+    3. Decode image bytes into OpenCV BGR frame.
+    4. Crop hand region using MediaPipe landmarks.
+    5. Send cropped image to Roboflow for ASL prediction.
+    6. Return prediction result as JSON.
     """
     
     # -------------------------------------------------------------------
-    # Step 5a: Read uploaded image bytes
+    # Step 6a: Validate file type
+    # -------------------------------------------------------------------
+    if not file.filename.lower().endswith(ALLOWED_EXTENSIONS):
+        return JSONResponse(status_code=415, content={"error": "Invalid file type"})
+
+    # -------------------------------------------------------------------
+    # Step 6b: Read uploaded image bytes
     # -------------------------------------------------------------------
     contents = await file.read()                                  # Read uploaded file into memory
     nparr = np.frombuffer(contents, np.uint8)                     # Convert bytes → NumPy array
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)                 # Decode image array → OpenCV BGR frame
 
     # -------------------------------------------------------------------
-    # Step 5b: Crop hand region using MediaPipe
+    # Step 6c: Crop hand region using MediaPipe
     # -------------------------------------------------------------------
     cropped_img = crop_hand_from_frame(frame, hands)             # Returns cropped image or None if no hand detected
     if cropped_img is None:
         return JSONResponse(content={"error": "No hand detected"}, status_code=400)  # Return error if no hand
 
     # -------------------------------------------------------------------
-    # Step 5c: Run Roboflow ASL inference
+    # Step 6d: Run Roboflow ASL inference
     # -------------------------------------------------------------------
     result = run_asl_inference(cropped_img)                       # Send cropped hand to Roboflow API
 
     # -------------------------------------------------------------------
-    # Step 5d: Return prediction result as JSON
+    # Step 6e: Return prediction result as JSON
     # -------------------------------------------------------------------
     return JSONResponse(content=result)

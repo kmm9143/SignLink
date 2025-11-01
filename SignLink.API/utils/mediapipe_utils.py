@@ -53,6 +53,12 @@ def crop_hand_from_frame(frame, hands):
     Returns:
         PIL.Image.Image or None: Cropped hand image as PIL Image, or None if no hand detected.
     """
+    # -------------------------------------------------------------------
+    # Safety check for invalid frames
+    # -------------------------------------------------------------------
+    if frame is None:
+        return None
+
     h, w, _ = frame.shape
 
     # Convert BGR to RGB for MediaPipe

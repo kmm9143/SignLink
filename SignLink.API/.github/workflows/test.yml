@@ -1,4 +1,4 @@
-﻿name: CI - Run Tests
+name: CI - Run Tests
 
 # 🔹 Trigger workflow on push or pull request to main or any branch
 on:

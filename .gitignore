@@ -44,3 +44,5 @@ C:/Datasets/
 /SignLink.API/tests/test_data/ASL_O.png
 /SignLink.API/tests/test_data/ASL_Short_Video.mp4
 /SignLink.API/tests/test_data/ASL_V.png
+/SignLink.API/tests/test_us5_user_settings.py
+/SignLink.API/tests/test_us6_translation_history.py

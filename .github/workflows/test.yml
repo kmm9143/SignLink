@@ -1,38 +1,41 @@
-name: CI - Run Tests
+name: Python Tests
 
 on:
   push:
-    branches:
-      - main
-      - '**'
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
-    env:
-      DATABASE_URL: "sqlite:///./test.db"
+    strategy:
+      matrix:
+        python-version: [3.10]
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r SignLink.API/requirements.txt
-          pip install pytest pytest-cov
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
 
-      - name: Run tests
+      - name: Run all tests with coverage
         run: |
-          pytest SignLink.API/tests/test_us1_translate_image.py -v --cov=. --cov-report=xml --cov-report=term-missing
-          pytest SignLink.API/tests/test_us2_translate_video.py -v --cov=. --cov-report=xml --cov-report=term-missing
-          pytest SignLink.API/tests/test_us3_translate_webcam.py -v --cov=. --cov-report=xml --cov-report=term-missing
+          # Run pytest on all test scripts and combine coverage
+          pytest tests/ --cov=. --cov-append --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage.xml

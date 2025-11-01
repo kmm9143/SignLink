@@ -84,7 +84,3 @@ async def predict_image(file: UploadFile = File(...)):
     # Step 6e: Return prediction result as JSON
     # -------------------------------------------------------------------
     return JSONResponse(content=result)
-
-
-
-

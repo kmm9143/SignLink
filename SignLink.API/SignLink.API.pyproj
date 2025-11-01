@@ -49,7 +49,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include=".coveragerc" />
-    <Content Include=".github\workflows\test.yml" />
     <Content Include=".venv\pyvenv.cfg" />
     <Content Include=".venv\Scripts\python.exe" />
     <Content Include=".venv\Scripts\pythonw.exe" />
@@ -65,8 +64,6 @@
     <Content Include="venv310\Scripts\pythonw.exe" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include=".github\" />
-    <Folder Include=".github\workflows\" />
     <Folder Include=".venv\" />
     <Folder Include=".venv\Include\" />
     <Folder Include=".venv\Lib\" />

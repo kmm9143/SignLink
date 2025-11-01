@@ -13,6 +13,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: "sqlite:///./test.db"
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -29,6 +32,5 @@ jobs:
           pip install pytest pytest-cov
 
       - name: Run tests
-        working-directory: SignLink.API
         run: |
-          pytest tests/test_us1_translate_image.py -v --cov=. --cov-report=xml --cov-report=term-missing
+          pytest SignLink.API/tests/test_us1_translate_image.py -v --cov=. --cov-report=xml --cov-report=term-missing

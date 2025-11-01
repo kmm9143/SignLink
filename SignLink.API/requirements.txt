@@ -11,5 +11,6 @@ pydantic==2.12.3
 pytest==8.4.2
 pytest_asyncio==1.2.0
 python-dotenv==1.2.1
+python-multipart==0.0.9
 SQLAlchemy==2.0.44
 uvicorn==0.38.0

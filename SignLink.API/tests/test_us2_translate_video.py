@@ -1,4 +1,4 @@
-﻿# DESCRIPTION:  This script serves as a standalone verification test for the ASL preprocessing pipeline.
+# DESCRIPTION:  This script serves as a standalone verification test for the ASL preprocessing pipeline.
 #               It reads a sample video, detects hands using MediaPipe, draws hand landmarks on each frame,
 #               crops the detected hand regions, and saves both annotated and cropped images for analysis.
 #               The test confirms that each frame containing a hand is properly detected and processed
@@ -156,3 +156,7 @@ def run_preprocessing_test():
 # -------------------------------------------------------------------
 if __name__ == "__main__":
     run_preprocessing_test()
+
+
+
+

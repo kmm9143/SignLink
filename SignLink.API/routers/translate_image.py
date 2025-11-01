@@ -1,4 +1,4 @@
-﻿# DESCRIPTION:  This script provides an API endpoint for ASL (American Sign Language) image classification.
+# DESCRIPTION:  This script provides an API endpoint for ASL (American Sign Language) image classification.
 #               It accepts an uploaded image, preprocesses it using MediaPipe to crop the hand region, and
 #               then sends the cropped image to a Roboflow Inference API for ASL alphabet prediction.
 #               The prediction result is returned as JSON for integration with frontend or other services.
@@ -84,3 +84,7 @@ async def predict_image(file: UploadFile = File(...)):
     # Step 6e: Return prediction result as JSON
     # -------------------------------------------------------------------
     return JSONResponse(content=result)
+
+
+
+

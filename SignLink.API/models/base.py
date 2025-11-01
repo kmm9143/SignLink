@@ -15,3 +15,7 @@ from sqlalchemy.ext.declarative import declarative_base                 # Base c
 # Step 2: Initialize declarative base class for all ORM models
 # -------------------------------------------------------------------
 Base = declarative_base()                                               # Shared base class for all SQLAlchemy model definitions
+
+
+
+

@@ -60,7 +60,7 @@ class UserLogin(BaseModel):
 # -------------------------------------------------------------------
 
 # -----------------------------
-# (5a) POST /signup — Register a new user
+# (5a) POST /signup â€” Register a new user
 # -----------------------------
 @router.post("/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):
@@ -133,3 +133,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         "last_name": db_user.LAST_NAME,
         "email": db_user.EMAIL
     }
+
+
+
+

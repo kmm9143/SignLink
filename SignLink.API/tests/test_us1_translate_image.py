@@ -1,4 +1,4 @@
-﻿"""
+"""
 TEST SUITE: US1 – Translate Image
 DESCRIPTION:
 Automated tests for the /image/predict endpoint that handles ASL image uploads,
@@ -133,3 +133,7 @@ def test_recognized_gesture_text(monkeypatch):
     result = response.json()
     assert result["predictions"][0]["class"] == "V"
     assert result["predictions"][0]["confidence"] >= 0.8
+
+
+
+

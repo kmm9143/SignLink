@@ -1,4 +1,4 @@
-﻿# DESCRIPTION:  This script configures the database connection and session management for the application.
+# DESCRIPTION:  This script configures the database connection and session management for the application.
 #               It loads environment variables, creates a SQLAlchemy engine using the DATABASE_URL,
 #               and defines a session factory for database transactions. The `get_db()` function provides
 #               a dependency-injected database session for FastAPI routes, ensuring proper connection
@@ -8,7 +8,7 @@
 #               [2] SQLAlchemy Documentation. (n.d.). Session Basics. Retrieved October 4, 2025, from https://docs.sqlalchemy.org/en/20/orm/session_basics.html
 #               [3] FastAPI Documentation. (n.d.). Dependencies with yield. Retrieved October 4, 2025, from https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-with-yield/
 #               [4] python-dotenv Documentation. (n.d.). load_dotenv Function. Retrieved October 4, 2025, from https://saurabh-kumar.com/python-dotenv/
-#               [5] Python Software Foundation. (n.d.). os — Miscellaneous operating system interfaces. Retrieved October 4, 2025, from https://docs.python.org/3/library/os.html
+#               [5] Python Software Foundation. (n.d.). os â€” Miscellaneous operating system interfaces. Retrieved October 4, 2025, from https://docs.python.org/3/library/os.html
 
 # -------------------------------------------------------------------
 # Step 1: Import required modules and dependencies
@@ -58,3 +58,7 @@ def get_db():
         yield db                                       # Yield the session for use in a request context
     finally:
         db.close()                                     # Ensure the session is closed after the request completes
+
+
+
+

@@ -1,4 +1,4 @@
-﻿# DESCRIPTION:  This script defines a FastAPI backend for American Sign Language (ASL) image classification
+# DESCRIPTION:  This script defines a FastAPI backend for American Sign Language (ASL) image classification
 #               using a Roboflow-hosted pretrained model. It exposes an endpoint for image upload, sends the
 #               image to the Roboflow API, and returns the prediction result as JSON. Designed for integration
 #               with frontend or other services for real-time ASL translation.
@@ -80,3 +80,7 @@ async def webcam_ws(websocket: WebSocket):
             await websocket.send_text(f"Received: {data}")
     except WebSocketDisconnect:
         print("WebSocket client disconnected")
+
+
+
+

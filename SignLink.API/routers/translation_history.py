@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from database import get_db
@@ -42,3 +42,8 @@ def delete_user_history(user_id: int, db: Session = Depends(get_db)):
         return clear_translation_history(db, user_id)
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail="Database error: " + str(e))
+
+
+
+
+

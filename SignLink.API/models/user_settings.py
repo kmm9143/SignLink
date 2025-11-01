@@ -6,7 +6,7 @@
 # SOURCE(S):    [1] SQLAlchemy Documentation. (n.d.). ORM Declarative Mapping. Retrieved October 3, 2025, from https://docs.sqlalchemy.org/en/20/orm/declarative_mapping.html
 #               [2] SQLAlchemy Documentation. (n.d.). Column and Data Types. Retrieved October 3, 2025, from https://docs.sqlalchemy.org/en/20/core/type_basics.html
 #               [3] SQLAlchemy Documentation. (n.d.). Relationships API. Retrieved October 3, 2025, from https://docs.sqlalchemy.org/en/20/orm/relationship_api.html
-#               [4] Python Software Foundation. (n.d.). uuid — UUID objects according to RFC 4122. Retrieved October 3, 2025, from https://docs.python.org/3/library/uuid.html
+#               [4] Python Software Foundation. (n.d.). uuid â€” UUID objects according to RFC 4122. Retrieved October 3, 2025, from https://docs.python.org/3/library/uuid.html
 
 # -------------------------------------------------------------------
 # Step 1: Import required libraries and modules
@@ -48,3 +48,8 @@ class UserSettings(Base):
     # Step 3b: Define ORM relationship to UserInformation
     # -------------------------------------------------------------------
     user = relationship("UserInformation", back_populates="settings")     # One-to-one relationship back to user info
+
+
+
+
+

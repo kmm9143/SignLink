@@ -6,7 +6,7 @@
 # SOURCE(S):    [1] SQLAlchemy Documentation. (n.d.). ORM Declarative Mapping. Retrieved October 4, 2025, from https://docs.sqlalchemy.org/en/20/orm/declarative_mapping.html
 #               [2] SQLAlchemy Documentation. (n.d.). Column and Data Types. Retrieved October 4, 2025, from https://docs.sqlalchemy.org/en/20/core/type_basics.html
 #               [3] SQLAlchemy Documentation. (n.d.). Relationships API. Retrieved October 4, 2025, from https://docs.sqlalchemy.org/en/20/orm/relationship_api.html
-#               [4] Python Software Foundation. (n.d.). hashlib — Secure hashes and message digests. Retrieved October 4, 2025, from https://docs.python.org/3/library/hashlib.html
+#               [4] Python Software Foundation. (n.d.). hashlib â€” Secure hashes and message digests. Retrieved October 4, 2025, from https://docs.python.org/3/library/hashlib.html
 
 # -------------------------------------------------------------------
 # Step 1: Import required libraries and modules
@@ -37,8 +37,8 @@ class UserInformation(Base):
     # -------------------------------------------------------------------
     USER_ID = Column(Integer, primary_key=True, autoincrement=True)        # Unique user identifier
     USERNAME = Column(String, unique=True, nullable=False)                 # Unique username for login
-    FIRST_NAME = Column(String, nullable=True)                             # User’s first name (optional)
-    LAST_NAME = Column(String, nullable=True)                              # User’s last name (optional)
+    FIRST_NAME = Column(String, nullable=True)                             # Userâ€™s first name (optional)
+    LAST_NAME = Column(String, nullable=True)                              # Userâ€™s last name (optional)
     EMAIL = Column(String, unique=True, nullable=False)                    # Unique email address
     PASSWORD = Column(String, nullable=False)                              # Hashed user password
     CREATED_AT = Column(DateTime(timezone=False), server_default=func.now(), nullable=False)  # Record creation time
@@ -49,3 +49,7 @@ class UserInformation(Base):
     # -------------------------------------------------------------------
     settings = relationship("UserSettings", back_populates="user", uselist=False)  # One-to-one relationship with UserSettings
     user_translation_history = relationship("UserTranslationHistory", back_populates="user", cascade="all, delete-orphan")
+
+
+
+

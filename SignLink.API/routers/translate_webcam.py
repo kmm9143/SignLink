@@ -1,4 +1,4 @@
-﻿# DESCRIPTION:  This script provides a FastAPI WebSocket endpoint for real-time ASL (American Sign Language)
+# DESCRIPTION:  This script provides a FastAPI WebSocket endpoint for real-time ASL (American Sign Language)
 #               translation using webcam frames. It receives video frames from the frontend, detects hands
 #               using MediaPipe, crops the hand region, and sends it to a Roboflow Inference API for ASL
 #               alphabet prediction. The predicted label and confidence are sent back to the frontend along
@@ -95,3 +95,7 @@ async def websocket_endpoint(websocket: WebSocket):
         # Step 5f: Handle client disconnect gracefully
         # -------------------------------------------------------------------
         pass
+
+
+
+

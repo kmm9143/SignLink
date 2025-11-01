@@ -1,4 +1,4 @@
-﻿# DESCRIPTION:  This script defines CRUD (Create, Read, Update, Delete) operations for user-related data models,
+# DESCRIPTION:  This script defines CRUD (Create, Read, Update, Delete) operations for user-related data models,
 #               including user settings and translation history. It manages database transactions safely,
 #               ensuring foreign key integrity between USER_INFORMATION, USER_SETTINGS, and TRANSLATION_HISTORY.
 # LANGUAGE:     PYTHON
@@ -140,3 +140,8 @@ def clear_translation_history(db: Session, user_id: int):
     except SQLAlchemyError as e:
         db.rollback()
         raise e
+
+
+
+
+

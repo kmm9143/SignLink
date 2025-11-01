@@ -1,4 +1,4 @@
-﻿# DESCRIPTION:
+# DESCRIPTION:
 #   Automated tests for User Settings persistence (Speech Output toggle)
 #   using FastAPI TestClient (httpx.AsyncClient + ASGITransport).
 #
@@ -180,3 +180,7 @@ async def test_tc_us5_04():
         assert settings2.status_code == 200
         # Confirm speech setting persisted as True across sessions
         assert settings2.json()["SPEECH_ENABLED"] is True
+
+
+
+

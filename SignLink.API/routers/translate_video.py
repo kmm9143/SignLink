@@ -114,7 +114,3 @@ async def translate_video(file: UploadFile = File(...)):
         raise HTTPException(status_code=404, detail="No hands detected in video or video may be corrupted.")
 
     return JSONResponse(content={"predictions": predictions})
-
-
-
-

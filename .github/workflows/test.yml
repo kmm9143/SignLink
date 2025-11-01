@@ -34,3 +34,4 @@ jobs:
       - name: Run tests
         run: |
           pytest SignLink.API/tests/test_us1_translate_image.py -v --cov=. --cov-report=xml --cov-report=term-missing
+          pytest SignLink.API/tests/test_us2_translate_video.py -v --cov=. --cov-report=xml --cov-report=term-missing

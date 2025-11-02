@@ -133,7 +133,3 @@ def test_recognized_gesture_text(monkeypatch):
     result = response.json()
     assert result["predictions"][0]["class"] == "V"
     assert result["predictions"][0]["confidence"] >= 0.8
-
-
-
-

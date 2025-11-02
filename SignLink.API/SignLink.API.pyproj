@@ -59,6 +59,8 @@
     <Content Include="tests\test_data\ASL_O.png" />
     <Content Include="tests\test_data\ASL_Short_Video.mp4" />
     <Content Include="tests\test_data\ASL_V.png" />
+    <Content Include="tests\test_data\ASL_Video_OVF.mp4" />
+    <Content Include="tests\test_data\Corrupted_Video.mp4" />
     <Content Include="venv310\pyvenv.cfg" />
     <Content Include="venv310\Scripts\python.exe" />
     <Content Include="venv310\Scripts\pythonw.exe" />

@@ -117,7 +117,7 @@ def get_translation_history(db: Session, user_id: int, limit: int = 10):
         return (
             db.query(UserTranslationHistory)
             .filter(UserTranslationHistory.USER_ID == user_id)
-            .order_by(UserTranslationHistory.TIMESTAMP.desc())
+            .order_by(UserTranslationHistory.CREATED_AT.desc())
             .limit(limit)
             .all()
         )

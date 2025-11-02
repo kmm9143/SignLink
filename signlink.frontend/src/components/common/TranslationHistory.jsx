@@ -1,4 +1,4 @@
-// DESCRIPTION: Displays the user's translation history across all modes (image, video, webcam).
+﻿// DESCRIPTION: Displays the user's translation history across all modes (image, video, webcam).
 // LANGUAGE:     JAVASCRIPT (React.js)
 
 import React, { useEffect, useState } from "react";
@@ -25,7 +25,16 @@ export default function TranslationHistory({ userId }) {
     }, [userId]);
 
     return (
-        <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1rem" }}>
+        <div
+            style={{
+                maxWidth: "700px",
+                margin: "0 auto",
+                padding: "1rem",
+                color: "#111", // ✅ Ensure dark readable text
+                backgroundColor: "#f9fafb", // ✅ Slight contrast background
+                borderRadius: "12px",
+            }}
+        >
             {/* Header */}
             <div
                 style={{
@@ -36,17 +45,25 @@ export default function TranslationHistory({ userId }) {
                 }}
             >
                 <History style={{ color: "#3b82f6" }} />
-                <h2 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Translation History</h2>
+                <h2
+                    style={{
+                        fontSize: "1.5rem",
+                        fontWeight: "bold",
+                        color: "#111", // ✅ Strong text color
+                    }}
+                >
+                    Translation History
+                </h2>
             </div>
 
             {/* Loading state */}
             {loading ? (
-                <div style={{ textAlign: "center", padding: "2rem" }}>
+                <div style={{ textAlign: "center", padding: "2rem", color: "#555" }}>
                     <Loader2 className="animate-spin" />
                     <p>Loading history...</p>
                 </div>
             ) : history.length === 0 ? (
-                <p style={{ textAlign: "center", color: "#777" }}>
+                <p style={{ textAlign: "center", color: "#666" }}>
                     No translation history found.
                 </p>
             ) : (
@@ -60,14 +77,15 @@ export default function TranslationHistory({ userId }) {
                                 borderRadius: "8px",
                                 padding: "1rem",
                                 boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-                                backgroundColor: "white",
+                                backgroundColor: "#fff", // ✅ Card background for contrast
+                                color: "#222", // ✅ Readable text color
                             }}
                         >
-                            <p>
+                            <p style={{ marginBottom: "0.25rem" }}>
                                 <strong>Type:</strong> {item.INPUT_TYPE}
                             </p>
-                            <p>{item.RECOGNIZED_TEXT}</p>
-                            <p style={{ fontSize: "0.8rem", color: "#888", marginTop: "0.5rem" }}>
+                            <p style={{ marginBottom: "0.25rem" }}>{item.RECOGNIZED_TEXT}</p>
+                            <p style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.5rem" }}>
                                 {new Date(item.CREATED_AT).toLocaleString()}
                             </p>
                         </div>

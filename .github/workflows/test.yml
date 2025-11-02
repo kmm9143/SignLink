@@ -38,13 +38,13 @@ jobs:
         run: |
           cd SignLink.API
           python - <<EOF
-  from database import engine
-  from models.base import Base
-  from models.user_information import UserInformation
-  from models.user_settings import UserSettings
-  from models.user_translation_history import UserTranslationHistory
+from database import engine
+from models.base import Base
+from models.user_information import UserInformation
+from models.user_settings import UserSettings
+from models.user_translation_history import UserTranslationHistory
 
-  Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 EOF
 
       # -----------------------------
@@ -56,20 +56,20 @@ EOF
         run: |
           cd SignLink.API
           python - <<EOF
-  from database import get_db
-  from models.user_information import UserInformation
+from database import get_db
+from models.user_information import UserInformation
 
-  db = next(get_db())
-  user = db.query(UserInformation).filter_by(USER_ID=1).first()
-  if not user:
-      db.add(UserInformation(
-          USER_ID=1,
-          USERNAME='testuser',
-          EMAIL='test@example.com',
-          PASSWORD='testpass'
-      ))
-      db.commit()
-  db.close()
+db = next(get_db())
+user = db.query(UserInformation).filter_by(USER_ID=1).first()
+if not user:
+    db.add(UserInformation(
+        USER_ID=1,
+        USERNAME='testuser',
+        EMAIL='test@example.com',
+        PASSWORD='testpass'
+    ))
+    db.commit()
+db.close()
 EOF
 
       # -----------------------------

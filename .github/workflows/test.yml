@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.10"]  # 👈 wrapped in quotes to avoid YAML float conversion
+        python-version: ["3.10"]
 
     steps:
       - name: Checkout repository
@@ -30,6 +30,8 @@ jobs:
           pip install pytest pytest-asyncio pytest-cov
 
       - name: Run all tests with coverage
+        env:
+          DATABASE_URL: "sqlite:///./test.db"  # ✅ Dummy SQLite database for CI
         run: |
           pytest SignLink.API/tests/ --cov=. --cov-append --cov-report=term-missing --cov-report=xml
 

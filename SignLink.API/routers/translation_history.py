@@ -42,8 +42,3 @@ def delete_user_history(user_id: int, db: Session = Depends(get_db)):
         return clear_translation_history(db, user_id)
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail="Database error: " + str(e))
-
-
-
-
-

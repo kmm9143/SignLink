@@ -58,7 +58,3 @@ def get_db():
         yield db                                       # Yield the session for use in a request context
     finally:
         db.close()                                     # Ensure the session is closed after the request completes
-
-
-
-

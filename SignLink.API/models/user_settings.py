@@ -48,8 +48,3 @@ class UserSettings(Base):
     # Step 3b: Define ORM relationship to UserInformation
     # -------------------------------------------------------------------
     user = relationship("UserInformation", back_populates="settings")     # One-to-one relationship back to user info
-
-
-
-
-

@@ -80,7 +80,3 @@ async def webcam_ws(websocket: WebSocket):
             await websocket.send_text(f"Received: {data}")
     except WebSocketDisconnect:
         print("WebSocket client disconnected")
-
-
-
-

@@ -140,8 +140,3 @@ def clear_translation_history(db: Session, user_id: int):
     except SQLAlchemyError as e:
         db.rollback()
         raise e
-
-
-
-
-

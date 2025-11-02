@@ -104,7 +104,3 @@ def update_settings(user_id: int, settings_update: SettingsUpdate, db: Session =
     db.commit()
     db.refresh(settings)
     return settings
-
-
-
-

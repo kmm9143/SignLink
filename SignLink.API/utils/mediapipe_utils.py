@@ -92,7 +92,3 @@ def crop_hand_from_frame(frame, hands):
     # Crop hand region and convert to PIL Image
     cropped = frame[y_min:y_max, x_min:x_max]
     return Image.fromarray(cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB))
-
-
-
-

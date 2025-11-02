@@ -48,7 +48,3 @@ def run_asl_inference(pil_img):
         images={"image": pil_img},       # Provide the image as input
         use_cache=True                   # Use cached predictions if available
     )
-
-
-
-

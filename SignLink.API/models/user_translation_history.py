@@ -49,7 +49,3 @@ class UserTranslationHistory(Base):
     # Step 3b: Define ORM relationship to UserInformation
     # -------------------------------------------------------------------
     user = relationship("UserInformation", back_populates="user_translation_history")
-
-
-
-

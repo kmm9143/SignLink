@@ -60,22 +60,24 @@ def log_translation(db: Session, user_id: int, input_type: str, recognized_text:
         db.commit()
         db.refresh(new_entry)
 
-        # Limit entries by type
+        # Limit entries by type (keep most recent N)
         limits = {"webcam": 3, "video": 6, "image": 20}
         limit_per_type = limits.get(input_type.lower(), 20)
 
-        subquery = (
-            db.query(UserTranslationHistory.ID)
+        entries = (
+            db.query(UserTranslationHistory)
             .filter(
                 UserTranslationHistory.USER_ID == user_id,
                 UserTranslationHistory.INPUT_TYPE == input_type
             )
             .order_by(UserTranslationHistory.CREATED_AT.desc())
-            .offset(limit_per_type)
-            .subquery()
+            .all()
         )
-        db.query(UserTranslationHistory).filter(UserTranslationHistory.ID.in_(subquery)).delete(synchronize_session=False)
-        db.commit()
+
+        if len(entries) > limit_per_type:
+            for old_entry in entries[limit_per_type:]:
+                db.delete(old_entry)
+            db.commit()
 
         return new_entry
 

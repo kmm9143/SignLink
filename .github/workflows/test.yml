@@ -39,6 +39,19 @@ jobs:
           cd SignLink.API
           python -c "from database import engine; from models.base import Base; Base.metadata.create_all(bind=engine)"
 
+      # -----------------------------
+      # Seed test user
+      # -----------------------------
+      - name: Seed test user
+        env:
+          DATABASE_URL: "sqlite:///./test.db"
+        run: |
+          cd SignLink.API
+          python -c "from database import get_db; from models.user_information import UserInformation; db = next(get_db()); db.add(UserInformation(USER_ID=1, USERNAME='testuser')); db.commit(); db.close()"
+
+      # -----------------------------
+      # Run all tests with coverage
+      # -----------------------------
       - name: Run all tests with coverage
         env:
           DATABASE_URL: "sqlite:///./test.db"
@@ -46,8 +59,11 @@ jobs:
           cd SignLink.API
           pytest tests/ --cov=. --cov-append --cov-report=term-missing --cov-report=xml
 
+      # -----------------------------
+      # Upload coverage report
+      # -----------------------------
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: SignLink.API/coverage.xml
+          path: coverage.xml

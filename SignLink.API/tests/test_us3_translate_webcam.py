@@ -1,6 +1,6 @@
 # tests/test_us3_translate_webcam.py
 """
-TEST SUITE: US3 – Live Translation
+TEST SUITE: US3 â€“ Live Translation
 DESCRIPTION:
 Automated tests for the /webcam/translate endpoint that handles real-time ASL translation
 via webcam using MediaPipe preprocessing and Roboflow inference.

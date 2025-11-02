@@ -1,189 +1,177 @@
-# tests/test_us3_translate_webcam.py
+# tests/test_us6_translation_history.py
 """
-TEST SUITE: US3 – Live Translation
+TEST SUITE: US6 – Translation History
 DESCRIPTION:
-Automated tests for the /webcam/translate endpoint that handles real-time ASL translation
-via webcam using MediaPipe preprocessing and Roboflow inference.
+Automated tests for the /translations/ endpoint that logs image, video, and webcam translations,
+ensures history persistence, and enforces retention limits.
 
-Requirements: R3, R4, R5, R6, R13, R15
+Requirements: R10
 """
 
+import os
 import pytest
-import base64
-import numpy as np
-from pathlib import Path
-from fastapi import WebSocketDisconnect
-from PIL import Image
-import cv2
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from app import app
+from database import get_db
+from crud import get_translation_history, clear_translation_history
+
+# Directory for test files
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "test_data")
+IMAGE_FILES = ["ASL_A.png", "ASL_O.png", "ASL_V.png"]
+VIDEO_FILES = ["ASL_Short_Video.mp4", "ASL_Video_OVF.mp4"]
+
+client = TestClient(app)
 
 # -------------------------------------------------------------------
 # Helper functions
 # -------------------------------------------------------------------
-def load_frame_from_png(png_path: str) -> np.ndarray:
-    """Load a frame from a PNG image as a BGR numpy array."""
-    img = Image.open(png_path).convert("RGB")
-    return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-
-def encode_frame_to_base64(frame: np.ndarray) -> str:
-    """Encode a BGR frame as base64 JPEG for WebSocket input."""
-    _, buffer = cv2.imencode(".jpg", frame)
-    return f"data:image/jpeg;base64,{base64.b64encode(buffer).decode('utf-8')}"
-
-# -------------------------------------------------------------------
-# Dummy WebSocket
-# -------------------------------------------------------------------
-class DummyWebSocket:
-    """A dummy WebSocket to simulate FastAPI WebSocket connection."""
-    def __init__(self):
-        self.accepted = False
-        self.sent_bytes = []
-        self.sent_json = []
-
-    async def accept(self):
-        self.accepted = True
-
-    async def send_bytes(self, data: bytes):
-        self.sent_bytes.append(data)
-
-    async def send_json(self, data: dict):
-        self.sent_json.append(data)
-
-    async def receive_text(self):
-        raise WebSocketDisconnect
-
-# -------------------------------------------------------------------
-# Fixtures
-# -------------------------------------------------------------------
-@pytest.fixture
-def ws():
-    """Dummy WebSocket instance for tests."""
-    return DummyWebSocket()
-
-@pytest.fixture
-def mock_mediapipe_and_roboflow(monkeypatch):
-    """Patch MediaPipe preprocessing and Roboflow inference."""
-    from routers import translate_webcam as tw
-    monkeypatch.setattr(tw, "crop_hand_from_frame", lambda frame, hands: np.ones((1, 1, 3), dtype=np.uint8))
-    monkeypatch.setattr(tw, "run_asl_inference", lambda img: [{"label": "F", "confidence": 0.895}])  # simulates TC-US3-01
+def get_test_db():
+    """Get a database session for tests."""
+    return next(get_db())
 
 # ===========================================================
-# TC-US3-01: Verify real-time translation with webcam
+# TC-US6-01: Ensure translations are saved to the database
 # ===========================================================
-@pytest.mark.asyncio
-async def test_webcam_prediction_success(ws, mock_mediapipe_and_roboflow):
-    """Simulates showing a gesture to webcam and receiving translation."""
-    from routers.translate_webcam import websocket_endpoint
+@pytest.mark.parametrize("filename", IMAGE_FILES)
+def test_image_translation_saved(filename):
+    """
+    Test saving of image translations.
+    Steps:
+    1. Perform a translation using the image translation feature.
+    2. Check the database for a new entry with correct recognized text.
+    Expected Result: New translation record is saved with user ID, recognized text, and timestamp.
+    """
+    db: Session = get_test_db()
+    clear_translation_history(db, user_id=1)
+    db.close()
 
-    png_path = Path(__file__).parent / "test_data" / "ASL_A.png"
-    frame = load_frame_from_png(str(png_path))
-    data_b64 = encode_frame_to_base64(frame)
+    response = client.post(
+        "/translations/",
+        json={
+            "user_id": 1,
+            "input_type": "image",
+            "recognized_text": filename.split(".")[0],
+            "filename": filename
+        }
+    )
+    assert response.status_code == 200
 
-    async def receive_text_once():
-        if not hasattr(receive_text_once, "_called"):
-            receive_text_once._called = True
-            return data_b64
-        raise WebSocketDisconnect
-
-    ws.receive_text = receive_text_once
-    await websocket_endpoint(ws)
-
-    assert ws.accepted is True
-    assert len(ws.sent_bytes) > 0
-    predictions = [p for msg in ws.sent_json for p in msg["prediction"]]
-    assert len(predictions) > 0
-    pred = predictions[0]
-    assert pred["label"] == "F"
-    assert pred["confidence"] >= 0.8
-
-# ===========================================================
-# TC-US3-03: Verify MediaPipe preprocessing occurs before Roboflow
-# ===========================================================
-@pytest.mark.asyncio
-async def test_mediapipe_preprocessing_called(ws, monkeypatch):
-    """Ensure hand detection and cropping occurs on webcam frames."""
-    from routers import translate_webcam
-    called = {}
-
-    png_path = Path(__file__).parent / "test_data" / "ASL_A.png"
-    frame = load_frame_from_png(str(png_path))
-    data_b64 = encode_frame_to_base64(frame)
-
-    def fake_crop(frame_arg, hands):
-        called["crop_called"] = True
-        return np.ones((1,1,3), dtype=np.uint8)
-
-    monkeypatch.setattr(translate_webcam, "crop_hand_from_frame", fake_crop)
-    monkeypatch.setattr(translate_webcam, "run_asl_inference", lambda img: [{"label": "F", "confidence": 0.934}])  # simulates TC-US3-03
-
-    async def receive_text_once():
-        if not hasattr(receive_text_once, "_called"):
-            receive_text_once._called = True
-            return data_b64
-        raise WebSocketDisconnect
-
-    ws.receive_text = receive_text_once
-    await translate_webcam.websocket_endpoint(ws)
-    assert called.get("crop_called") is True
+    db: Session = get_test_db()
+    history = get_translation_history(db, user_id=1)
+    db.close()
+    assert any(h.RECOGNIZED_TEXT == filename.split(".")[0] for h in history)
 
 # ===========================================================
-# TC-US3-02: Verify error when webcam unavailable
+# TC-US6-01: Video translations saved
 # ===========================================================
-@pytest.mark.asyncio
-async def test_webcam_disconnect(ws):
-    """Simulate webcam unavailable / disconnected."""
-    from routers.translate_webcam import websocket_endpoint
+@pytest.mark.parametrize("filename", VIDEO_FILES)
+def test_video_translation_saved(filename):
+    """
+    Test saving of video translations.
+    Steps:
+    1. Perform a translation using the video translation feature.
+    2. Check the database for a new entry with correct recognized text.
+    Expected Result: New translation record is saved with user ID, recognized text, and timestamp.
+    """
+    db: Session = get_test_db()
+    clear_translation_history(db, user_id=1)
+    db.close()
 
-    async def receive_disconnect():
-        raise WebSocketDisconnect
-    ws.receive_text = receive_disconnect
+    response = client.post(
+        "/translations/",
+        json={
+            "user_id": 1,
+            "input_type": "video",
+            "recognized_text": filename.split(".")[0],
+            "filename": filename
+        }
+    )
+    assert response.status_code == 200
 
-    await websocket_endpoint(ws)
-    assert ws.accepted is True
-
-# ===========================================================
-# TC-US3-05: Verify webcam permission request
-# ===========================================================
-@pytest.mark.asyncio
-async def test_webcam_permission_prompt(ws):
-    """Simulate first-time permission request handling."""
-    from routers.translate_webcam import websocket_endpoint
-
-    async def receive_disconnect():
-        raise WebSocketDisconnect
-    ws.receive_text = receive_disconnect
-
-    await websocket_endpoint(ws)
-    assert ws.accepted is True
-
-# ===========================================================
-# TC-US3-06: Verify processing latency <1s including Roboflow API
-# ===========================================================
-@pytest.mark.asyncio
-async def test_webcam_latency(ws, mock_mediapipe_and_roboflow):
-    """Measure latency from frame receipt to prediction output."""
-    import time
-    from routers.translate_webcam import websocket_endpoint
-
-    png_path = Path(__file__).parent / "test_data" / "ASL_A.png"
-    frame = load_frame_from_png(str(png_path))
-    data_b64 = encode_frame_to_base64(frame)
-
-    async def receive_text_once():
-        if not hasattr(receive_text_once, "_called"):
-            receive_text_once._called = True
-            return data_b64
-        else:
-            raise WebSocketDisconnect
-
-    ws.receive_text = receive_text_once
-
-    start = time.time()
-    await websocket_endpoint(ws)
-    end = time.time()
-
-    assert (end - start) < 1.0  # simulates TC-US3-06
+    db: Session = get_test_db()
+    history = get_translation_history(db, user_id=1)
+    db.close()
+    assert any(h.RECOGNIZED_TEXT == filename.split(".")[0] for h in history)
 
 # ===========================================================
-# TC-US3-04: Verify Roboflow correctly classifies webcam input
+# TC-US6-04: Clearing translation history
 # ===========================================================
-# This is partially covered in test_webcam_prediction_success with label F; can adjust label to W to simulate TC-US3-04
+def test_clear_translation_history():
+    """
+    Test clearing all translation history.
+    Steps:
+    1. Add a translation.
+    2. Call the 'clear history' endpoint.
+    3. Verify database is empty.
+    Expected Result: All translation history entries are removed; UI would show empty state.
+    """
+    response = client.post(
+        "/translations/",
+        json={
+            "user_id": 1,
+            "input_type": "image",
+            "recognized_text": "CLEAR_TEST",
+            "filename": IMAGE_FILES[0]
+        }
+    )
+    assert response.status_code == 200
+
+    response = client.delete("/translations/1/all")
+    assert response.status_code == 200
+
+    db: Session = get_test_db()
+    history = get_translation_history(db, user_id=1)
+    db.close()
+    assert len(history) == 0
+
+# ===========================================================
+# TC-US6-05: Empty history displays proper UI state
+# ===========================================================
+def test_empty_history_state():
+    """
+    Test empty translation history.
+    Steps:
+    1. Query the database with no translations present.
+    Expected Result: History is empty; UI would display 'No past translations available.'
+    """
+    db: Session = get_test_db()
+    history = get_translation_history(db, user_id=1)
+    db.close()
+    assert len(history) == 0
+
+# ===========================================================
+# TC-US6-08: Retention of only 3 most recent webcam translations
+# ===========================================================
+def test_webcam_retention_limit():
+    """
+    Test webcam translation retention limit.
+    Steps:
+    1. Clear history.
+    2. Perform 4 webcam translations.
+    3. Check database.
+    Expected Result: Only the 3 most recent webcam translations remain; oldest removed.
+    """
+    client.delete("/translations/1/all")
+
+    for i in range(4):
+        client.post(
+            "/translations/",
+            json={
+                "user_id": 1,
+                "input_type": "webcam",
+                "recognized_text": f"WEBCAM_{i}",
+                "filename": None
+            }
+        )
+
+    db: Session = get_test_db()
+    history = get_translation_history(db, user_id=1)
+    db.close()
+
+    webcam_entries = [h for h in history if h.INPUT_TYPE == "webcam"]
+    webcam_entries.sort(key=lambda h: h.ID)  # ensure chronological order
+
+    assert len(webcam_entries) <= 3
+    assert webcam_entries[-1].RECOGNIZED_TEXT == "WEBCAM_3"

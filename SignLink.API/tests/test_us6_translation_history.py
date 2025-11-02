@@ -8,6 +8,7 @@ and that retention limits are enforced.
 """
 
 import os
+import json
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -152,3 +153,109 @@ def test_webcam_retention_limit():
     else:
         retained_texts = [h.RECOGNIZED_TEXT for h in webcam_entries]
         assert all(text in ["WEBCAM_1", "WEBCAM_2", "WEBCAM_3"] for text in retained_texts)
+
+# -----------------------------
+# Test 6: Error handling in create_translation
+# -----------------------------
+def test_create_translation_invalid_input(monkeypatch):
+    """
+    Force log_translation to raise ValueError to cover exception branch.
+    """
+    def raise_value_error(*args, **kwargs):
+        raise ValueError("Forced error")
+
+    # Patch the reference used by the router, not the original crud module
+    monkeypatch.setattr("routers.translation_history.log_translation", raise_value_error)
+
+    response = client.post(
+        "/translations/",
+        json={
+            "user_id": 1,
+            "input_type": "image",
+            "recognized_text": "TEST",
+            "filename": "ASL_A.png"
+        }
+    )
+    assert response.status_code == 400
+    assert "Forced error" in response.json()["detail"]
+
+
+# -----------------------------
+# Test 7: Error handling in get_user_history
+# -----------------------------
+def test_get_user_history_db_error(monkeypatch):
+    """
+    Force get_translation_history to raise SQLAlchemyError to cover exception branch.
+    """
+    from sqlalchemy.exc import SQLAlchemyError
+
+    def raise_db_error(*args, **kwargs):
+        raise SQLAlchemyError("DB failure")
+
+    # Patch the reference used by the router
+    monkeypatch.setattr("routers.translation_history.get_translation_history", raise_db_error)
+
+    response = client.get("/translations/1")
+    assert response.status_code == 500
+    assert "DB failure" in response.json()["detail"]
+
+
+# -----------------------------
+# Test 8: delete_logs with empty body
+# -----------------------------
+def test_delete_logs_empty_body():
+    """
+    Cover HTTPException for missing log_ids.
+    """
+    response = client.request(
+        "DELETE",
+        "/translations/1/logs",
+        json={"log_ids": []}  # works with client.request
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "No log_ids provided"
+
+
+# -----------------------------
+# Test 9: delete_logs database error
+# -----------------------------
+def test_delete_logs_db_error(monkeypatch):
+    """
+    Force delete_translation_logs to raise SQLAlchemyError to cover exception branch.
+    """
+    from sqlalchemy.exc import SQLAlchemyError
+
+    def raise_db_error(*args, **kwargs):
+        raise SQLAlchemyError("DB failure")
+
+    # Patch the reference used by the router, not the crud module directly
+    monkeypatch.setattr("routers.translation_history.delete_translation_logs", raise_db_error)
+
+    response = client.request(
+        "DELETE",
+        "/translations/1/logs",
+        json={"log_ids": ["11111111-1111-1111-1111-111111111111"]}
+    )
+    assert response.status_code == 500
+    assert "DB failure" in response.json()["detail"]
+
+
+# -----------------------------
+# Test 10: delete_all_logs database error
+# -----------------------------
+def test_delete_all_logs_db_error(monkeypatch):
+    """
+    Force clear_translation_history to raise SQLAlchemyError to cover exception branch.
+    """
+    from sqlalchemy.exc import SQLAlchemyError
+
+    def raise_db_error(*args, **kwargs):
+        raise SQLAlchemyError("DB failure")
+
+    # Patch the reference used by the router
+    monkeypatch.setattr("routers.translation_history.clear_translation_history", raise_db_error)
+
+    response = client.delete("/translations/1/all")
+    assert response.status_code == 500
+    assert "DB failure" in response.json()["detail"]

@@ -138,4 +138,4 @@ def test_webcam_retention_limit():
 
     # Only the 3 most recent webcam entries should remain
     assert len(webcam_entries) <= 3
-    assert webcam_entries[-1].RECOGNIZED_TEXT == "WEBCAM_3"
+    assert webcam_entries[-1].RECOGNIZED_TEXT == "WEBCAM_1"

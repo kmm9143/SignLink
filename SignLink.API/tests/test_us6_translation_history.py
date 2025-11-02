@@ -20,15 +20,11 @@ from database import get_db, engine
 from crud import get_translation_history, clear_translation_history
 
 # 🧩 Ensure DB schema exists before any test runs (for GitHub CI)
-# Import your SQLAlchemy Base from where your models are defined
-# e.g., models/base.py or models/__init__.py
 try:
     from models.base import Base
 except ImportError:
-    # fallback in case Base is declared elsewhere
     from models import Base
 
-# Create tables once at import time
 Base.metadata.create_all(bind=engine)
 
 # -----------------------------
@@ -137,11 +133,13 @@ def test_empty_history_state():
 # Test 5: Webcam translations retention limit
 # -----------------------------
 def test_webcam_retention_limit():
-    client.delete("/translations/1/all")
+    """Ensure only the 3 most recent webcam translations are retained."""
+    response = client.delete("/translations/1/all")
+    assert response.status_code == 200
 
     # Add 4 webcam translations
     for i in range(4):
-        client.post(
+        response = client.post(
             "/translations/",
             json={
                 "user_id": 1,
@@ -150,14 +148,19 @@ def test_webcam_retention_limit():
                 "filename": None
             }
         )
+        assert response.status_code == 200
 
     db: Session = get_test_db()
     history = get_translation_history(db, user_id=1)
     db.close()
 
     webcam_entries = [h for h in history if h.INPUT_TYPE == "webcam"]
-    webcam_entries.sort(key=lambda h: h.ID)
+    webcam_entries.sort(key=lambda h: h.ID)  # chronological order
 
-    # Only 3 most recent should remain
+    # Debug output to see what remains
+    print("Webcam entries after retention:", [h.RECOGNIZED_TEXT for h in webcam_entries])
+
+    # Only the 3 most recent should remain
     assert len(webcam_entries) <= 3
-    assert webcam_entries[-1].RECOGNIZED_TEXT in ["WEBCAM_2", "WEBCAM_3"]
+    retained_texts = [h.RECOGNIZED_TEXT for h in webcam_entries]
+    assert all(text in ["WEBCAM_1", "WEBCAM_2", "WEBCAM_3"] for text in retained_texts)

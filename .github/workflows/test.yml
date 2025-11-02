@@ -29,62 +29,13 @@ jobs:
           pip install -r SignLink.API/requirements.txt
           pip install pytest pytest-asyncio pytest-cov
 
-      # -----------------------------
-      # Create a fresh SQLite test DB if not exists
-      # -----------------------------
-      - name: Ensure test database exists
-        env:
-          DATABASE_URL: "sqlite:///./test.db"
-        run: |
-          cd SignLink.API
-          python - <<EOF
-from database import engine
-from models.base import Base
-from models.user_information import UserInformation
-from models.user_settings import UserSettings
-from models.user_translation_history import UserTranslationHistory
-
-Base.metadata.create_all(bind=engine)
-EOF
-
-      # -----------------------------
-      # Seed test user (only if not exists)
-      # -----------------------------
-      - name: Seed test user
-        env:
-          DATABASE_URL: "sqlite:///./test.db"
-        run: |
-          cd SignLink.API
-          python - <<EOF
-from database import get_db
-from models.user_information import UserInformation
-
-db = next(get_db())
-user = db.query(UserInformation).filter_by(USER_ID=1).first()
-if not user:
-    db.add(UserInformation(
-        USER_ID=1,
-        USERNAME='testuser',
-        EMAIL='test@example.com',
-        PASSWORD='testpass'
-    ))
-    db.commit()
-db.close()
-EOF
-
-      # -----------------------------
-      # Run all tests with coverage
-      # -----------------------------
       - name: Run all tests with coverage
         env:
           DATABASE_URL: "sqlite:///./test.db"
         run: |
           cd SignLink.API
-          pytest tests/ --cov=. --cov-append --cov-report=term-missing --cov-report=xml
+          pytest tests/ --cov=. --cov-report=term-missing --cov-report=xml
 
-      # -----------------------------
-      # Upload coverage report
-      # -----------------------------
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:

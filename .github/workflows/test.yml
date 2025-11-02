@@ -30,22 +30,24 @@ jobs:
           pip install pytest pytest-asyncio pytest-cov
 
       # -----------------------------
-      # NEW: Initialize database
+      # Initialize test database
       # -----------------------------
       - name: Initialize test database
         env:
           DATABASE_URL: "sqlite:///./test.db"
         run: |
+          cd SignLink.API
           python -c "from database import engine; from models.base import Base; Base.metadata.create_all(bind=engine)"
 
       - name: Run all tests with coverage
         env:
           DATABASE_URL: "sqlite:///./test.db"
         run: |
-          pytest SignLink.API/tests/ --cov=. --cov-append --cov-report=term-missing --cov-report=xml
+          cd SignLink.API
+          pytest tests/ --cov=. --cov-append --cov-report=term-missing --cov-report=xml
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage.xml
+          path: SignLink.API/coverage.xml

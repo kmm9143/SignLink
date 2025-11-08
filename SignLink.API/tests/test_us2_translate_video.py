@@ -79,7 +79,8 @@ def test_translate_video_invalid_type():
         "/video/translate",
         files={"file": ("invalid_file.docx", fake_file, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}
     )
-    assert response.status_code == 400
+    # FastAPI rejects unsupported media types automatically
+    assert response.status_code == 415
     assert "Invalid" in response.text or "valid video" in response.text
 
 

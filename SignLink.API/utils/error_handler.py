@@ -82,7 +82,17 @@ def register_exception_handlers(app):
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
         """Catch-all for unexpected server errors (US9-06, US9-07)."""
-        logger.error(f"Unexpected error: {traceback.format_exc()} | Path: {request.url}")
+
+        # Log both the short message and full traceback
+        error_message = f"Exception occurred: {exc} | Path: {request.url}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+
+        # Also emit to root logger so pytest caplog can intercept
+        import logging
+        logging.getLogger().error(error_message)
+        logging.getLogger().error(traceback.format_exc())
+
         return JSONResponse(
             status_code=500,
             content={
@@ -90,3 +100,5 @@ def register_exception_handlers(app):
                 "context": "generic"
             },
         )
+
+

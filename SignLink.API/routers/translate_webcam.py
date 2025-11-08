@@ -43,26 +43,39 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         while True:
-            data = await websocket.receive_text()
-            if not data.startswith("data:image"):
-                continue
-
-            # Decode base64 frame into OpenCV BGR image
-            base64_data = data.split(",")[1]
-            img_bytes = base64.b64decode(base64_data)
-            img_array = np.frombuffer(img_bytes, np.uint8)
-            frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-
-            # Crop hand region using MediaPipe
-            cropped_img = crop_hand_from_frame(frame, hands)
-
-            # Convert PIL.Image to NumPy array if needed
-            if cropped_img is not None and isinstance(cropped_img, Image.Image):
-                cropped_img = cv2.cvtColor(np.array(cropped_img), cv2.COLOR_RGB2BGR)
-
             prediction_data = None
-            if isinstance(cropped_img, np.ndarray) and cropped_img.size > 0:
-                prediction_data = run_asl_inference(cropped_img)
+            frame = None
+
+            try:
+                data = await websocket.receive_text()
+                
+                # Only process if frame is a valid base64 image
+                if data.startswith("data:image"):
+                    base64_data = data.split(",")[1]
+                    img_bytes = base64.b64decode(base64_data)
+                    img_array = np.frombuffer(img_bytes, np.uint8)
+                    frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+
+                    # Crop hand region using MediaPipe
+                    cropped_img = crop_hand_from_frame(frame, hands)
+
+                    # Convert PIL.Image to NumPy array if needed
+                    if cropped_img is not None and isinstance(cropped_img, Image.Image):
+                        cropped_img = cv2.cvtColor(np.array(cropped_img), cv2.COLOR_RGB2BGR)
+
+                    # Run ASL inference if a valid hand region is detected
+                    if isinstance(cropped_img, np.ndarray) and cropped_img.size > 0:
+                        prediction_data = run_asl_inference(cropped_img)
+
+                else:
+                    # Invalid frame: create dummy black frame to respond
+                    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+            except Exception:
+                # Catch any decoding, crop, or inference error
+                prediction_data = None
+                if frame is None:
+                    frame = np.zeros((480, 640, 3), dtype=np.uint8)
 
             # Send annotated frame and prediction back to frontend
             _, buffer = cv2.imencode(".jpg", frame)

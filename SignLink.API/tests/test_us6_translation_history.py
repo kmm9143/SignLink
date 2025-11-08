@@ -1,4 +1,3 @@
-# tests/test_us6_translation_history.py
 """
 TEST SUITE: US6 – Translation History
 DESCRIPTION:
@@ -177,8 +176,8 @@ def test_create_translation_invalid_input(monkeypatch):
         }
     )
     assert response.status_code == 400
-    assert "Forced error" in response.json()["detail"]
-
+    # Updated to match current error handler key
+    assert "Forced error" in response.json().get("error", "")
 
 # -----------------------------
 # Test 7: Error handling in get_user_history
@@ -197,8 +196,7 @@ def test_get_user_history_db_error(monkeypatch):
 
     response = client.get("/translations/1")
     assert response.status_code == 500
-    assert "DB failure" in response.json()["detail"]
-
+    assert "DB failure" in response.json().get("error", "")
 
 # -----------------------------
 # Test 8: delete_logs with empty body
@@ -214,8 +212,7 @@ def test_delete_logs_empty_body():
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "No log_ids provided"
-
+    assert response.json().get("error", "") == "No log_ids provided"
 
 # -----------------------------
 # Test 9: delete_logs database error
@@ -238,8 +235,7 @@ def test_delete_logs_db_error(monkeypatch):
         json={"log_ids": ["11111111-1111-1111-1111-111111111111"]}
     )
     assert response.status_code == 500
-    assert "DB failure" in response.json()["detail"]
-
+    assert "DB failure" in response.json().get("error", "")
 
 # -----------------------------
 # Test 10: delete_all_logs database error
@@ -258,4 +254,4 @@ def test_delete_all_logs_db_error(monkeypatch):
 
     response = client.delete("/translations/1/all")
     assert response.status_code == 500
-    assert "DB failure" in response.json()["detail"]
+    assert "DB failure" in response.json().get("error", "")

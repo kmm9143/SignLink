@@ -12,26 +12,27 @@
 # -------------------------------------------------------------------
 # Step 1: Import required libraries
 # -------------------------------------------------------------------
-from fastapi import APIRouter, UploadFile, File                   # FastAPI tools for routing and file handling
-from fastapi.responses import JSONResponse                        # For returning JSON API responses
-import cv2                                                        # OpenCV for image decoding and processing
-import numpy as np                                                # NumPy for handling image arrays
+from fastapi import APIRouter, UploadFile, File, HTTPException     # FastAPI tools for routing, file handling, and error raising
+from fastapi.responses import JSONResponse                         # For returning JSON API responses
+import cv2                                                         # OpenCV for image decoding and processing
+import numpy as np                                                 # NumPy for handling image arrays
+import requests                                                    # Used to handle Roboflow network errors and timeouts
 
 # -------------------------------------------------------------------
 # Step 2: Import utility functions for MediaPipe preprocessing and Roboflow inference
 # -------------------------------------------------------------------
-from utils.roboflow_client import run_asl_inference               # Sends image to Roboflow for ASL prediction
-from utils.mediapipe_utils import init_hands, crop_hand_from_frame  # Initialize MediaPipe & crop hand from frame
+from utils.roboflow_client import run_asl_inference                # Sends image to Roboflow for ASL prediction
+from utils.mediapipe_utils import init_hands, crop_hand_from_frame   # Initialize MediaPipe & crop hand from frame
 
 # -------------------------------------------------------------------
 # Step 3: Configure FastAPI router
 # -------------------------------------------------------------------
-router = APIRouter(prefix="/image", tags=["image"])               # Define API router with "/image" prefix
+router = APIRouter(prefix="/image", tags=["image"])                # Define API router with "/image" prefix
 
 # -------------------------------------------------------------------
 # Step 4: Initialize MediaPipe hand detection for static images
 # -------------------------------------------------------------------
-hands = init_hands(static_image_mode=True)                       # Use static mode for single image uploads
+hands = init_hands(static_image_mode=True)                        # Use static mode for single image uploads
 
 # -------------------------------------------------------------------
 # Step 5: Define allowed file types
@@ -54,31 +55,45 @@ async def predict_image(file: UploadFile = File(...)):
     5. Send cropped image to Roboflow for ASL prediction.
     6. Return prediction result as JSON.
     """
-    
+
     # -------------------------------------------------------------------
     # Step 6a: Validate file type
     # -------------------------------------------------------------------
     if not file.filename.lower().endswith(ALLOWED_EXTENSIONS):
-        return JSONResponse(status_code=415, content={"error": "Invalid file type"})
+        # Centralized error handling will catch this and return { "error": "Invalid file type..." }
+        raise HTTPException(status_code=415, detail="Invalid file type. Please upload a PNG, JPG, or JPEG image.")
 
     # -------------------------------------------------------------------
     # Step 6b: Read uploaded image bytes
     # -------------------------------------------------------------------
-    contents = await file.read()                                  # Read uploaded file into memory
-    nparr = np.frombuffer(contents, np.uint8)                     # Convert bytes → NumPy array
-    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)                 # Decode image array → OpenCV BGR frame
+    contents = await file.read()                                   # Read uploaded file into memory
+    nparr = np.frombuffer(contents, np.uint8)                      # Convert bytes → NumPy array
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)                  # Decode image array → OpenCV BGR frame
+
+    if frame is None:
+        raise HTTPException(status_code=400, detail="Uploaded file could not be decoded as an image.")
 
     # -------------------------------------------------------------------
     # Step 6c: Crop hand region using MediaPipe
     # -------------------------------------------------------------------
-    cropped_img = crop_hand_from_frame(frame, hands)             # Returns cropped image or None if no hand detected
+    cropped_img = crop_hand_from_frame(frame, hands)               # Returns cropped image or None if no hand detected
     if cropped_img is None:
-        return JSONResponse(content={"error": "No hand detected"}, status_code=400)  # Return error if no hand
+        raise HTTPException(status_code=400, detail="No hand detected in the uploaded image.")
 
     # -------------------------------------------------------------------
     # Step 6d: Run Roboflow ASL inference
     # -------------------------------------------------------------------
-    result = run_asl_inference(cropped_img)                       # Send cropped hand to Roboflow API
+    try:
+        result = run_asl_inference(cropped_img)                    # Send cropped hand to Roboflow API
+    except requests.exceptions.ConnectionError:
+        # Raised when Roboflow service is offline or unreachable
+        raise HTTPException(status_code=503, detail="Server unavailable. Please try again later.")
+    except requests.exceptions.Timeout:
+        # Raised when Roboflow request exceeds timeout limit
+        raise HTTPException(status_code=504, detail="Server timeout. Please try again later.")
+    except Exception:
+        # All other exceptions during inference should return a generic 500
+        raise HTTPException(status_code=500, detail="Unexpected server error. Please try again later.")
 
     # -------------------------------------------------------------------
     # Step 6e: Return prediction result as JSON

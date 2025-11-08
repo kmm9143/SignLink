@@ -23,6 +23,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="app.py" />
+    <Compile Include="tests\test_us9_error_handling.py" />
+    <Compile Include="utils\error_handler.py" />
     <Compile Include="models\base.py" />
     <Compile Include="models\user_information.py" />
     <Compile Include="models\user_translation_history.py" />
@@ -57,6 +59,7 @@
     <Content Include="pytest.ini" />
     <Content Include="requirements.txt" />
     <Content Include=".env" />
+    <Content Include="tests\test_data\ASL_A.jpg" />
     <Content Include="tests\test_data\ASL_A.png" />
     <Content Include="tests\test_data\ASL_O.png" />
     <Content Include="tests\test_data\ASL_Short_Video.mp4" />
@@ -74,6 +77,7 @@
     <Folder Include=".venv\Lib\site-packages\" />
     <Folder Include=".venv\Scripts\" />
     <Folder Include="models\" />
+    <Folder Include="logs\" />
     <Folder Include="routers\" />
     <Folder Include="tests\test_data\" />
     <Folder Include="utils\" />

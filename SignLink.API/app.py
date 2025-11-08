@@ -1,42 +1,43 @@
 # DESCRIPTION:  This script defines a FastAPI backend for American Sign Language (ASL) image classification
-#               using a Roboflow-hosted pretrained model. It exposes an endpoint for image upload, sends the
-#               image to the Roboflow API, and returns the prediction result as JSON. Designed for integration
-#               with frontend or other services for real-time ASL translation.
+#               using a Roboflow-hosted pretrained model. It exposes endpoints for image, video, and webcam
+#               uploads, sends the data to the Roboflow API, and returns the prediction results as JSON.
+#               It also integrates centralized error handling from error_handler.py for consistent responses.
 # LANGUAGE:     PYTHON
-# SOURCE(S):    [1] GeeksforGeeks. (2023, January 10). Face and hand landmarks detection using Python - Mediapipe, OpenCV. GeeksforGeeks. Retrieved September 19, 2025, from https://www.geeksforgeeks.org/machine-learning/face-and-hand-landmarks-detection-using-python-mediapipe-opencv/
-#               [2] Google. (n.d.). MediaPipe Hands. MediaPipe. Retrieved September 19, 2025, from https://mediapipe.readthedocs.io/en/latest/solutions/hands.html
-#               [3] Google AI Edge. (2025, January 13). Hand landmarks detection guide for Python. Google AI Edge. Retrieved September 19, 2025, from https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/python
-#               [4] Roboflow. (2025, February 4). Python inference-sdk. In Roboflow Documentation. Retrieved September 19, 2025, from https://docs.roboflow.com/deploy/sdks/python-inference-sdk
-#               [5] Roboflow. (2025, May 16). Using the Python SDK. In Roboflow Developer Documentation. Retrieved September 19, 2025, from https://docs.roboflow.com/developer/python-sdk/using-the-python-sdk
-#               [6] Roboflow. (n.d.). How do I run inference? Inference Documentation. Retrieved September 19, 2025, from https://inference.roboflow.com/quickstart/inference_101/
-#               [7] Roboflow. (n.d.). InferencePipeline. In Roboflow Documentation. Retrieved September 19, 2025, from https://inference.roboflow.com/using_inference/inference_pipeline/
-#               [8] Warchocki, J., Vlasenko, M., & Eisma, Y. B. (2023, October 23). GRLib: An open-source hand gesture detection and recognition python library. arXiv. Retrieved September 19, 2025, from https://arxiv.org/abs/2310.14919
-#               [9] Gautam, A. (2024). Hand recognition using OpenCV & MediaPipe. Medium. Retrieved September 19, 2025, from https://medium.com/aditee-gautam/hand-recognition-using-opencv-a7b109941c88
 
 # -----------------------------------------------------------------------------------
 # Step 1: Import required libraries and modules
 # -----------------------------------------------------------------------------------
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect         # Import FastAPI for building the API server
-from fastapi.middleware.cors import CORSMiddleware                  # Import CORS middleware for cross-origin requests
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+import logging
 
-from routers.translate_image import router as image_router                  # Import image translation router
-from routers.translate_video import router as video_router                  # Import video translation router
-from routers.translate_webcam import router as webcam_router                # Import webcam translation router
+# Import routers
+from routers.translate_image import router as image_router
+from routers.translate_video import router as video_router
+from routers.translate_webcam import router as webcam_router
 from routers.settings import router as settings_router
 from routers.translation_history import router as history_router
 from routers.auth import router as auth_router
 
+# Database setup
 from database import engine, Base
+
+# Import centralized error handler
+from utils.error_handler import register_exception_handlers
+
 # -----------------------------------------------------------------------------------
 # Step 2: Initialize FastAPI application
 # -----------------------------------------------------------------------------------
-app = FastAPI(title="SignLink API")                                 # Create FastAPI app instance with a title
+app = FastAPI(title="SignLink API")
+
+# Register global exception handlers (centralized)
+register_exception_handlers(app)
 
 # -----------------------------------------------------------------------------------
 # Step 3: Configure CORS (Cross-Origin Resource Sharing)
 # -----------------------------------------------------------------------------------
 origins = [
-    "http://localhost:51233",  
+    "http://localhost:51233",
     "http://127.0.0.1:51233",
     "http://localhost:5173",
     "http://127.0.0.1:5173"
@@ -44,39 +45,51 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,                                          # Restrict allowed origins (use ["*"] for all during testing)
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # -----------------------------------------------------------------------------------
-# Step 4: Include API routers for different translation modes
+# Step 4: Logging Configuration
 # -----------------------------------------------------------------------------------
-app.include_router(image_router)                                # image translation
-app.include_router(video_router)                                # video translation
-app.include_router(webcam_router)                               # webcam translation
-app.include_router(settings_router)                             # user settings
-app.include_router(history_router)
-app.include_router(auth_router)  # authentication
+logger = logging.getLogger("signlink")
+handler = logging.FileHandler("error.log")
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.ERROR)
 
 # -----------------------------------------------------------------------------------
-# Step 5: Health Check Endpoint
+# Step 5: Include Routers
+# -----------------------------------------------------------------------------------
+app.include_router(image_router)
+app.include_router(video_router)
+app.include_router(webcam_router)
+app.include_router(settings_router)
+app.include_router(history_router)
+app.include_router(auth_router)
+
+# -----------------------------------------------------------------------------------
+# Step 6: Health Check Endpoint
 # -----------------------------------------------------------------------------------
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 # -----------------------------------------------------------------------------------
-# Step 6: WebSocket Endpoint for Real-time Webcam Translation
+# Step 7: WebSocket Endpoint for Real-time Webcam Translation
 # -----------------------------------------------------------------------------------
 @app.websocket("/webcam/ws")
 async def webcam_ws(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            data = await websocket.receive_text()  # Receive data from frontend
-            # For now, just echo it back (you can add ASL prediction later)
+            data = await websocket.receive_text()
             await websocket.send_text(f"Received: {data}")
     except WebSocketDisconnect:
         print("WebSocket client disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error: {repr(e)}")
+        await websocket.close(code=1011, reason="Internal server error")

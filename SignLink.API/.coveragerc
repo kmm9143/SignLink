@@ -4,6 +4,7 @@ source = .
 omit =
     */tests/*
     */__init__.py
+    rebuild_db.py
 
 [report]
 show_missing = True

@@ -20,6 +20,13 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 import logging
 import numpy as np
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import SQLAlchemyError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from utils import error_handler
 
 from app import app
 
@@ -298,3 +305,110 @@ def test_us9_continues_after_error(endpoint, patch_path, monkeypatch):
             assert "predictions" in json_body
         else:
             pytest.fail(f"Unexpected response type: {type(json_body)}")
+
+# --------------------------------------------------------------------
+# Extra tests for additional coverage
+# --------------------------------------------------------------------
+@pytest.fixture
+def dummy_request():
+    """Create a fake request object."""
+    class DummyRequest:
+        url = "http://testserver/some/path"
+    return DummyRequest()
+
+
+@pytest.fixture
+def app_with_handlers():
+    """Register all exception handlers on a dummy FastAPI app."""
+    app = FastAPI()
+    error_handler.register_exception_handlers(app)
+    return app
+
+
+# --------------------------------------------------------------------
+# TC-ERR-01: Starlette HTTPException
+# --------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_http_exception_handler(app_with_handlers, dummy_request, caplog):
+    caplog.set_level(logging.ERROR)
+    handler = app_with_handlers.exception_handlers[StarletteHTTPException]
+    exc = StarletteHTTPException(status_code=404, detail="Resource not found")
+    response = await handler(dummy_request, exc)
+    assert response.status_code == 404
+    data = response.body.decode()
+    assert "Resource not found" in data
+    assert "context" in data
+    assert any("HTTPException" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------
+# TC-ERR-02: Request Validation Error
+# --------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_validation_exception_handler(app_with_handlers, dummy_request, caplog):
+    caplog.set_level(logging.ERROR)
+    handler = app_with_handlers.exception_handlers[RequestValidationError]
+    exc = RequestValidationError([{"loc": ["body", "file"], "msg": "field required"}])
+    response = await handler(dummy_request, exc)
+    assert response.status_code == 422
+    data = response.body.decode()
+    assert "Invalid request format" in data
+    assert "context" in data
+    assert any("ValidationError" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------
+# TC-ERR-03: SQLAlchemyError
+# --------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_sqlalchemy_exception_handler(app_with_handlers, dummy_request, caplog):
+    caplog.set_level(logging.ERROR)
+    handler = app_with_handlers.exception_handlers[SQLAlchemyError]
+    exc = SQLAlchemyError("DB connection lost")
+    response = await handler(dummy_request, exc)
+    assert response.status_code == 500
+    data = response.body.decode()
+    assert "Database error" in data
+    assert "context" in data
+    assert any("SQLAlchemyError" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------
+# TC-ERR-04: ConnectionError
+# --------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_connection_error_handler(app_with_handlers, dummy_request, caplog):
+    caplog.set_level(logging.ERROR)
+    handler = app_with_handlers.exception_handlers[ConnectionError]
+    exc = ConnectionError("API timeout")
+    response = await handler(dummy_request, exc)
+    assert response.status_code == 503
+    data = response.body.decode()
+    assert "Server unavailable" in data
+    assert "context" in data
+    assert any("ConnectionError" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------
+# TC-ERR-05: Generic Exception with Traceback
+# --------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_generic_exception_handler_traceback(app_with_handlers, dummy_request, caplog):
+    """
+    Covers generic handler, including traceback logging and dual logger calls.
+    """
+    caplog.set_level(logging.ERROR)
+    handler = app_with_handlers.exception_handlers[Exception]
+
+    try:
+        raise ValueError("Test generic error")
+    except Exception as exc:
+        response = await handler(dummy_request, exc)
+
+    assert response.status_code == 500
+    data = response.body.decode()
+    assert "Unexpected server error" in data
+    assert "context" in data
+    # Check that both message and traceback were logged
+    assert any("Exception occurred" in r.message for r in caplog.records)
+    assert any("Traceback" in r.message or "ValueError" in r.message for r in caplog.records)

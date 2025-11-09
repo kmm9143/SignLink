@@ -24,6 +24,7 @@
   <ItemGroup>
     <Compile Include="app.py" />
     <Compile Include="tests\test_us4_display_confidence.py" />
+    <Compile Include="tests\test_crud.py" />
     <Compile Include="tests\test_us9_error_handling.py" />
     <Compile Include="utils\error_handler.py" />
     <Compile Include="models\base.py" />

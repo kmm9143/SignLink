@@ -20,6 +20,15 @@ export default function WebcamTranslate({ userId = 1 }) {
 
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [pendingTranscript, setPendingTranscript] = useState("");
+    const [serverError, setServerError] = useState(false);
+
+    // 🕓 Give connection time before showing error
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (!connected) setServerError(true);
+        }, 3000); // waits 3s before deciding it failed
+        return () => clearTimeout(timer);
+    }, [connected]);
 
     // Handle incoming predictions + recording
     useEffect(() => {
@@ -97,6 +106,15 @@ export default function WebcamTranslate({ userId = 1 }) {
     if (!settings.WEBCAM_ENABLED)
         return <div>⚠️ Webcam is disabled in your settings.</div>;
 
+    // ✅ If server connection fails after retry window
+    if (serverError && !connected) {
+        return (
+            <div style={{ color: "red", textAlign: "center", padding: "24px" }}>
+                <h3>Server error. Please try again later.</h3>
+            </div>
+        );
+    }
+
     const left = (
         <div style={{ padding: "16px" }}>
             <div style={{ display: "flex", gap: "24px" }}>
@@ -124,7 +142,7 @@ export default function WebcamTranslate({ userId = 1 }) {
                 <strong>Prediction:</strong> {renderPrediction()}
                 <SpeakerIcon enabled={settings?.SPEECH_ENABLED} speaking={speaking} size={22} />
                 <div style={{ marginLeft: "12px", color: connected ? "lightgreen" : "gray" }}>
-                    {connected ? "Connected" : "Disconnected"}
+                    {connected ? "Connected" : "Connecting..."}
                 </div>
             </div>
 
@@ -132,14 +150,28 @@ export default function WebcamTranslate({ userId = 1 }) {
                 {!recording ? (
                     <button
                         onClick={handleStartRecording}
-                        style={{ padding: "8px 16px", background: "#2ecc71", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer" }}
+                        style={{
+                            padding: "8px 16px",
+                            background: "#2ecc71",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                        }}
                     >
                         🎙️ Start Recording Transcript
                     </button>
                 ) : (
                     <button
                         onClick={handleStopRecording}
-                        style={{ padding: "8px 16px", background: "#e74c3c", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer" }}
+                        style={{
+                            padding: "8px 16px",
+                            background: "#e74c3c",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                        }}
                     >
                         ⏹️ Stop Recording Transcript
                     </button>
@@ -151,7 +183,15 @@ export default function WebcamTranslate({ userId = 1 }) {
                 <div style={{ marginTop: "24px" }}>
                     <h4>Recent Webcam Translations (max 3):</h4>
                     {recordedLog.map((entry, idx) => (
-                        <div key={idx} style={{ marginBottom: "8px", background: "#222", padding: "8px", borderRadius: "4px" }}>
+                        <div
+                            key={idx}
+                            style={{
+                                marginBottom: "8px",
+                                background: "#222",
+                                padding: "8px",
+                                borderRadius: "4px",
+                            }}
+                        >
                             <div style={{ color: "#bbb", fontSize: "0.8em" }}>{entry.timestamp}</div>
                             <div style={{ color: "#fff", fontWeight: "bold" }}>{entry.text}</div>
                         </div>
@@ -160,33 +200,66 @@ export default function WebcamTranslate({ userId = 1 }) {
             )}
 
             {showSaveModal && (
-                <div style={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    backgroundColor: "rgba(0,0,0,0.5)",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    zIndex: 1000
-                }}>
-                    <div style={{ background: "#222", padding: "24px", borderRadius: "8px", textAlign: "center", maxWidth: "400px", color: "#fff" }}>
+                <div
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        backgroundColor: "rgba(0,0,0,0.5)",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        zIndex: 1000,
+                    }}
+                >
+                    <div
+                        style={{
+                            background: "#222",
+                            padding: "24px",
+                            borderRadius: "8px",
+                            textAlign: "center",
+                            maxWidth: "400px",
+                            color: "#fff",
+                        }}
+                    >
                         <h3>Save Transcript?</h3>
-                        <p style={{ wordBreak: "break-word", background: "#111", padding: "8px", borderRadius: "6px" }}>
+                        <p
+                            style={{
+                                wordBreak: "break-word",
+                                background: "#111",
+                                padding: "8px",
+                                borderRadius: "6px",
+                            }}
+                        >
                             {pendingTranscript}
                         </p>
                         <div style={{ marginTop: "16px" }}>
                             <button
                                 onClick={saveTranscript}
-                                style={{ marginRight: "12px", padding: "8px 16px", background: "#2ecc71", border: "none", borderRadius: "6px", color: "#fff", cursor: "pointer" }}
+                                style={{
+                                    marginRight: "12px",
+                                    padding: "8px 16px",
+                                    background: "#2ecc71",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    color: "#fff",
+                                    cursor: "pointer",
+                                }}
                             >
                                 ✅ Save
                             </button>
                             <button
                                 onClick={() => setShowSaveModal(false)}
-                                style={{ padding: "8px 16px", background: "#e74c3c", border: "none", borderRadius: "6px", color: "#fff", cursor: "pointer" }}
+                                style={{
+                                    padding: "8px 16px",
+                                    background: "#e74c3c",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    color: "#fff",
+                                    cursor: "pointer",
+                                }}
                             >
                                 ❌ Cancel
                             </button>

@@ -1,4 +1,10 @@
-﻿import React, { useState } from "react";
+﻿// DESCRIPTION:  This React component handles the "Upload Video" translation mode for the ASL Translator app.
+//                It allows users to upload video files containing sign language gestures, sends the video
+//                to the backend for frame-by-frame inference, displays top predictions per frame, and logs
+//                the last three processed videos for quick reference. The component also integrates optional
+//                text-to-speech output for recognized phrases and saves translations to the backend.
+
+import React, { useState } from "react";
 import SpeakerIcon from "../common/SpeakerIcon.jsx";
 import useUserSettings from "../../hooks/useUserSettings";
 import useSpeech from "../../hooks/useSpeech";
@@ -22,6 +28,9 @@ export default function VideoTranslate({ userId = 1 }) {
     const [log, setLog] = useState([]);
     const [validationError, setValidationError] = useState(null);
 
+    // ----------------------------------------------------------------------
+    // Handle file selection and basic validation (only allow video formats)
+    // ----------------------------------------------------------------------
     const handleFileChange = (e) => {
         const selectedFile = e.target.files?.[0];
         setValidationError(null);
@@ -45,6 +54,9 @@ export default function VideoTranslate({ userId = 1 }) {
         setPreviewUrl(URL.createObjectURL(selectedFile));
     };
 
+    // ----------------------------------------------------------------------
+    // Handle upload and backend prediction request
+    // ----------------------------------------------------------------------
     const handleSubmit = async () => {
         setValidationError(null);
         if (!file) {
@@ -60,6 +72,14 @@ export default function VideoTranslate({ userId = 1 }) {
             }
         });
 
+        // ✅ Graceful error fallback for server issues (same as ImageTranslate)
+        if (error) {
+            setValidationError(error);
+            setProgress(null);
+            return;
+        }
+
+        // ✅ No predictions case
         if (!preds || preds.length === 0) {
             setValidationError("No predictions were returned.");
             setProgress(null);
@@ -107,13 +127,20 @@ export default function VideoTranslate({ userId = 1 }) {
         setProgress(null);
     };
 
+    // ----------------------------------------------------------------------
+    // Download transcript log as a .txt file
+    // ----------------------------------------------------------------------
     const downloadLog = (entry) => {
-        const text = entry.predictions.map((p) => `Frame ${p.frame}: ${p.label} (${(p.confidence * 100).toFixed(1)}%)`).join("\n");
+        const text = entry.predictions
+            .map((p) => `Frame ${p.frame}: ${p.label} (${(p.confidence * 100).toFixed(1)}%)`)
+            .join("\n");
         const blob = new Blob([text], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        const name = entry.fileName.endsWith(".mp4") ? entry.fileName.replace(/\.mp4$/i, ".txt") : entry.fileName + ".txt";
+        const name = entry.fileName.endsWith(".mp4")
+            ? entry.fileName.replace(/\.mp4$/i, ".txt")
+            : entry.fileName + ".txt";
         link.download = name;
         document.body.appendChild(link);
         link.click();
@@ -123,6 +150,9 @@ export default function VideoTranslate({ userId = 1 }) {
 
     if (!settings) return <div>Loading user settings...</div>;
 
+    // ----------------------------------------------------------------------
+    // LEFT PANE: Video upload, progress, prediction results, and error display
+    // ----------------------------------------------------------------------
     const left = (
         <>
             {/* Pass renderPreview so UploadPanel renders a video element (not an <img>) */}
@@ -141,9 +171,22 @@ export default function VideoTranslate({ userId = 1 }) {
                     </div>
                 )}
             >
-                <SpeakerIcon enabled={settings?.SPEECH_ENABLED} speaking={speaking} size={22} style={{ marginLeft: "1rem" }} />
-                {validationError && <p style={{ color: "red", marginTop: "0.5rem" }}>{validationError}</p>}
-                {error && <p style={{ color: "red" }}>{error}</p>}
+                <SpeakerIcon
+                    enabled={settings?.SPEECH_ENABLED}
+                    speaking={speaking}
+                    size={22}
+                    style={{ marginLeft: "1rem" }}
+                />
+
+                {/* ✅ Unified error and validation display (matches ImageTranslate) */}
+                {validationError && (
+                    <p style={{ color: "red", marginTop: "0.5rem" }}>{validationError}</p>
+                )}
+                {error && !validationError && (
+                    <p style={{ color: "red", marginTop: "0.5rem" }}>
+                        {error}
+                    </p>
+                )}
 
                 <PredictionList
                     predictions={predictions}
@@ -161,15 +204,39 @@ export default function VideoTranslate({ userId = 1 }) {
         </>
     );
 
+    // ----------------------------------------------------------------------
+    // RIGHT PANE: Recent translation logs and download functionality
+    // ----------------------------------------------------------------------
     const right = (
         <TranslationLog
             log={log}
             onClear={() => setLog([])}
             renderEntry={(entry) => (
                 <>
-                    <video src={entry.videoUrl} controls style={{ width: "100%", borderRadius: "6px", marginBottom: "0.4rem" }} />
-                    <div style={{ fontSize: "0.8em", color: "#bbb", marginBottom: "0.5rem" }}>{entry.timestamp}</div>
-                    <div style={{ flexGrow: 1, overflowY: "auto", minHeight: "160px", maxHeight: "220px", borderTop: "1px solid #444", paddingTop: "0.5rem" }}>
+                    <video
+                        src={entry.videoUrl}
+                        controls
+                        style={{ width: "100%", borderRadius: "6px", marginBottom: "0.4rem" }}
+                    />
+                    <div
+                        style={{
+                            fontSize: "0.8em",
+                            color: "#bbb",
+                            marginBottom: "0.5rem",
+                        }}
+                    >
+                        {entry.timestamp}
+                    </div>
+                    <div
+                        style={{
+                            flexGrow: 1,
+                            overflowY: "auto",
+                            minHeight: "160px",
+                            maxHeight: "220px",
+                            borderTop: "1px solid #444",
+                            paddingTop: "0.5rem",
+                        }}
+                    >
                         {entry.predictions?.map((p, i) => (
                             <div key={i} style={{ color: p.confidence < 0.5 ? "red" : "white" }}>
                                 Frame {p.frame}: {p.label} ({(p.confidence * 100).toFixed(1)}%)
@@ -177,7 +244,20 @@ export default function VideoTranslate({ userId = 1 }) {
                             </div>
                         ))}
                     </div>
-                    <button onClick={() => downloadLog(entry)} style={{ marginTop: "0.5rem", padding: "4px 8px", background: "#1976d2", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>Download Transcript</button>
+                    <button
+                        onClick={() => downloadLog(entry)}
+                        style={{
+                            marginTop: "0.5rem",
+                            padding: "4px 8px",
+                            background: "#1976d2",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                        }}
+                    >
+                        Download Transcript
+                    </button>
                 </>
             )}
             containerStyle={{ minWidth: "540px", maxWidth: "1100px" }}

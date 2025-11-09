@@ -127,28 +127,68 @@ def test_us9_backend_failure(endpoint, patch_path, monkeypatch):
 
 
 # --------------------------------------------------------------------
-# TC-US9-04: Error Message Clearance After Recovery
+# TC-US9-04: Error Message Clears After a Valid Request
 # --------------------------------------------------------------------
 @pytest.mark.parametrize("endpoint", ["/image/predict", "/video/translate"])
-def test_us9_error_message_clears(endpoint):
+def test_us9_error_message_clears(endpoint, monkeypatch):
     """
     TC-US9-04: Ensure previous errors are cleared after a valid request.
     """
-    # Trigger first a failure
+
+    # ----------------------------------------------------------------
+    # Step 1: Trigger a failure using an invalid file type
+    # ----------------------------------------------------------------
     fake_file = io.BytesIO(b"invalid content")
     client.post(endpoint, files={"file": ("bad.txt", fake_file, "text/plain")})
 
+    # ----------------------------------------------------------------
+    # Step 2: Patch inference to return a valid dummy response
+    #         (prevents real API/network calls in CI)
+    # ----------------------------------------------------------------
     if "image" in endpoint:
+        patch_path = "routers.translate_image.run_asl_inference"
         filename, content_type = "ASL_A.png", "image/png"
     else:
+        patch_path = "routers.translate_video.run_asl_inference"
         filename, content_type = "ASL_Short_Video.mp4", "video/mp4"
 
+    def mock_success(*args, **kwargs):
+        """Return a mocked success inference response."""
+        return {"predictions": [{"class": "A", "confidence": 0.98}]}
+
+    monkeypatch.setattr(patch_path, mock_success)
+
+    # ----------------------------------------------------------------
+    # Step 3: Send a valid request after the failure
+    # ----------------------------------------------------------------
     file_obj = get_test_file(filename, content_type)
     with file_obj[0] if isinstance(file_obj, tuple) else file_obj as f:
         response = client.post(endpoint, files={"file": (filename, f, content_type)})
-        assert response.status_code == 200
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+
+        # ----------------------------------------------------------------
+        # Step 4: Confirm previous errors cleared and valid response returned
+        # ----------------------------------------------------------------
         json_body = response.json()
-        assert "error" not in json_body or json_body.get("error") == ""
+        if "image" in endpoint:
+            assert "predictions" in json_body
+            assert isinstance(json_body["predictions"], list)
+            assert len(json_body["predictions"]) > 0
+            assert "class" in json_body["predictions"][0]
+        else:
+            # For video endpoints, the response wraps frames in a "predictions" list
+            assert "predictions" in json_body, f"Missing 'predictions' key: {json_body}"
+            assert isinstance(json_body["predictions"], list)
+            assert len(json_body["predictions"]) > 0
+
+            # Check the first frame’s structure
+            first_frame = json_body["predictions"][0]
+            assert "prediction" in first_frame, f"Expected 'prediction' in frame: {first_frame}"
+            assert "predictions" in first_frame["prediction"]
+            preds = first_frame["prediction"]["predictions"]
+            assert isinstance(preds, list)
+            assert len(preds) > 0
+            assert "class" in preds[0]
 
 
 # --------------------------------------------------------------------

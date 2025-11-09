@@ -23,6 +23,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="app.py" />
+    <Compile Include="tests\test_us4_display_confidence.py" />
     <Compile Include="tests\test_us9_error_handling.py" />
     <Compile Include="utils\error_handler.py" />
     <Compile Include="models\base.py" />
@@ -59,10 +60,12 @@
     <Content Include="pytest.ini" />
     <Content Include="requirements.txt" />
     <Content Include=".env" />
+    <Content Include="tests\test_data\ASL_A_or_B.png" />
     <Content Include="tests\test_data\ASL_A.jpg" />
     <Content Include="tests\test_data\ASL_A.png" />
     <Content Include="tests\test_data\ASL_O.png" />
     <Content Include="tests\test_data\ASL_Short_Video.mp4" />
+    <Content Include="tests\test_data\ASL_Blurry.png" />
     <Content Include="tests\test_data\ASL_V.png" />
     <Content Include="tests\test_data\ASL_Video_OVF.mp4" />
     <Content Include="tests\test_data\Corrupted_Video.mp4" />

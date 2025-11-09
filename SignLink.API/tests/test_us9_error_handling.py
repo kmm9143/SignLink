@@ -206,11 +206,13 @@ def test_us9_continues_after_error(endpoint, patch_path, monkeypatch):
     """
     TC-US9-06: Ensure application recovers gracefully after a failed request.
     """
-    from utils.roboflow_client import run_asl_inference as real_run_asl_inference
 
-    # First request fails
+    # ----------------------------------------------------------------
+    # Step 1: Force the first request to fail intentionally.
+    # ----------------------------------------------------------------
     def fail_once(*args, **kwargs):
         raise Exception("Transient failure")
+
     monkeypatch.setattr(patch_path, fail_once)
 
     if "image" in endpoint:
@@ -223,13 +225,32 @@ def test_us9_continues_after_error(endpoint, patch_path, monkeypatch):
         response = client.post(endpoint, files={"file": (filename, f, content_type)})
         assert response.status_code == 500
 
-    # Restore normal behavior
-    monkeypatch.setattr(patch_path, real_run_asl_inference)
+    # ----------------------------------------------------------------
+    # Step 2: Restore a mocked "successful" inference instead of
+    #         calling the real Roboflow API (to prevent CI errors).
+    # ----------------------------------------------------------------
+    def mock_success(*args, **kwargs):
+        # Return a dummy inference response that mimics expected structure
+        return {
+            "predictions": [
+                {"class": "A", "confidence": 0.97}
+            ]
+        }
+
+    monkeypatch.setattr(patch_path, mock_success)
+
+    # ----------------------------------------------------------------
+    # Step 3: Send a valid request again and verify the app recovers.
+    # ----------------------------------------------------------------
     file_obj = get_test_file(filename, content_type)
     with file_obj[0] if isinstance(file_obj, tuple) else file_obj as f:
         response = client.post(endpoint, files={"file": (filename, f, content_type)})
-        assert response.status_code == 200
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         json_body = response.json()
+
+        # ----------------------------------------------------------------
+        # Step 4: Validate structure of the returned JSON.
+        # ----------------------------------------------------------------
         if isinstance(json_body, list):
             assert len(json_body) > 0
             assert "predictions" in json_body[0]

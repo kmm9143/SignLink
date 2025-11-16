@@ -7,8 +7,11 @@ import React from "react";
  */
 export default function PredictionList({ predictions = [], renderItem }) {
     if (!predictions || predictions.length === 0) return null;
+
     return (
         <div
+            role="region"
+            aria-label="Prediction results"
             style={{
                 marginTop: "1rem",
                 maxHeight: "250px",
@@ -20,6 +23,7 @@ export default function PredictionList({ predictions = [], renderItem }) {
             }}
         >
             <h3
+                id="predictionListHeader"
                 style={{
                     color: "white",
                     position: "sticky",
@@ -31,9 +35,20 @@ export default function PredictionList({ predictions = [], renderItem }) {
             >
                 Predictions:
             </h3>
-            <div style={{ padding: "0.5rem" }}>
+
+            <div
+                role="list"
+                aria-labelledby="predictionListHeader"
+                style={{ padding: "0.5rem" }}
+            >
                 {predictions.map((p, i) => (
-                    <div key={i}>{renderItem ? renderItem(p, i) : JSON.stringify(p)}</div>
+                    <div
+                        key={i}
+                        role="listitem"
+                        aria-label={`Prediction ${i + 1}`}
+                    >
+                        {renderItem ? renderItem(p, i) : JSON.stringify(p)}
+                    </div>
                 ))}
             </div>
         </div>

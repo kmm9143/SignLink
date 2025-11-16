@@ -6,8 +6,19 @@ import React from "react";
  */
 export default function TranslatorLayout({ left, right }) {
     return (
-        <div style={{ padding: "2rem", display: "flex", alignItems: "flex-start" }}>
-            <div style={{ flex: 1, minWidth: 0 }}>{left}</div>
+        <div
+            style={{ padding: "2rem", display: "flex", alignItems: "flex-start" }}
+            role="region"
+            aria-label="Translator Layout Container"
+        >
+            <div
+                style={{ flex: 1, minWidth: 0 }}
+                role="region"
+                aria-label="Primary Content Area"
+            >
+                {left}
+            </div>
+
             {right && (
                 <div
                     style={{
@@ -18,6 +29,8 @@ export default function TranslatorLayout({ left, right }) {
                         flexDirection: "column",
                         alignItems: "flex-end",
                     }}
+                    role="region"
+                    aria-label="Side Panel"
                 >
                     {right}
                 </div>

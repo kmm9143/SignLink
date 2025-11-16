@@ -21,19 +21,58 @@ export default function UploadPanel({
     children,
 }) {
     return (
-        <div>
-            <input type="file" accept={accept} onChange={onFileChange} />
-            <button onClick={onSubmit} disabled={disabled || loading} style={{ marginLeft: "1rem" }}>
+        <div
+            role="region"
+            aria-label="Upload Panel"
+        >
+            {/* File Input */}
+            <input
+                type="file"
+                accept={accept}
+                onChange={onFileChange}
+                aria-label="Select File to Upload"
+            />
+
+            {/* Submit Button */}
+            <button
+                onClick={onSubmit}
+                disabled={disabled || loading}
+                style={{ marginLeft: "1rem" }}
+                aria-label={loading ? "Processing Upload" : `${submitLabel} Button`}
+            >
                 {loading ? "Processing..." : submitLabel}
             </button>
 
             {children}
 
-            {loading && <LoadingBar progress={progress} />}
+            {/* Loading Bar */}
+            {loading && (
+                <LoadingBar
+                    progress={progress}
+                    aria-label={`Upload Progress: ${progress}%`}
+                />
+            )}
 
+            {/* Preview Section */}
             {previewUrl && (
-                <div style={{ marginTop: "1rem" }}>
-                    {renderPreview ? renderPreview(previewUrl) : <img src={previewUrl} alt="Preview" style={{ maxWidth: "300px", maxHeight: "300px", border: "1px solid #ccc" }} />}
+                <div
+                    style={{ marginTop: "1rem" }}
+                    role="region"
+                    aria-label="Preview Area"
+                >
+                    {renderPreview ? (
+                        renderPreview(previewUrl)
+                    ) : (
+                        <img
+                            src={previewUrl}
+                            alt="Uploaded File Preview"
+                            style={{
+                                maxWidth: "300px",
+                                maxHeight: "300px",
+                                border: "1px solid #ccc",
+                            }}
+                        />
+                    )}
                 </div>
             )}
         </div>

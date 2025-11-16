@@ -7,14 +7,38 @@
 import { useState, useEffect } from 'react';
 
 function Toggle({ label, checked, onChange }) {
+    const [focused, setFocused] = useState(false);
+
     return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '1rem 0' }}>
+        <div
+            tabIndex={0}
+            onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onChange();
+                }
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                margin: '1rem 0',
+                padding: '0.5rem',
+                borderRadius: '8px',
+                outline: focused ? '3px solid #3b82f6' : 'none',
+                cursor: "pointer"
+            }}
+        >
             <span style={{ fontSize: '1rem', fontWeight: 500 }}>{label}</span>
+
             <label style={{ position: 'relative', display: 'inline-block', width: 50, height: 24 }}>
                 <input
                     type="checkbox"
                     checked={checked}
                     onChange={onChange}
+                    tabIndex={-1}
                     style={{ opacity: 0, width: 0, height: 0 }}
                 />
                 <span
@@ -65,7 +89,6 @@ export default function UserSettings({ userId }) {
 
         async function fetchSettings() {
             try {
-                // Use relative URL so Vite dev proxy forwards requests (avoids CORS)
                 const res = await fetch(`/settings/${encodeURIComponent(userId)}`, { credentials: 'include' });
                 if (cancelled) return;
 
@@ -76,7 +99,6 @@ export default function UserSettings({ userId }) {
                         webcam_enabled: data.WEBCAM_ENABLED,
                     });
                 } else if (res.status === 404) {
-                    // Create default settings for the user
                     const createRes = await fetch(`/settings/`, {
                         method: 'POST',
                         credentials: 'include',
@@ -87,9 +109,11 @@ export default function UserSettings({ userId }) {
                             webcam_enabled: true,
                         }),
                     });
+
                     if (createRes.ok) {
                         const defaultData = await createRes.json();
                         if (cancelled) return;
+
                         setSettings({
                             speech_enabled: defaultData.SPEECH_ENABLED,
                             webcam_enabled: defaultData.WEBCAM_ENABLED,
@@ -114,7 +138,6 @@ export default function UserSettings({ userId }) {
         setSettings(updatedSettings); // optimistic update
 
         try {
-            // Use relative URL so Vite dev proxy forwards requests (avoids CORS)
             const res = await fetch(`/settings/${encodeURIComponent(userId)}`, {
                 method: 'PUT',
                 credentials: 'include',
@@ -124,13 +147,12 @@ export default function UserSettings({ userId }) {
                     webcam_enabled: updatedSettings.webcam_enabled,
                 }),
             });
+
             if (!res.ok) {
-                // optionally: handle rollback if strict consistency required
                 throw new Error('Failed to update settings');
             }
         } catch (err) {
             console.error(err);
-            // keep optimistic UI; consider rollback if desired
         }
     };
 

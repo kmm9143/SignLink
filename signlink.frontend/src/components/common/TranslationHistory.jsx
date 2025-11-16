@@ -12,7 +12,9 @@ export default function TranslationHistory({ userId }) {
     const [editMode, setEditMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
 
+    //
     // Fetch translation history
+    //
     useEffect(() => {
         const fetchHistory = async () => {
             try {
@@ -29,7 +31,9 @@ export default function TranslationHistory({ userId }) {
         if (userId != null) fetchHistory();
     }, [userId]);
 
+    //
     // Apply filter & sort
+    //
     useEffect(() => {
         localStorage.setItem("historyFilter", filter);
         localStorage.setItem("historySortOrder", sortOrder);
@@ -47,31 +51,33 @@ export default function TranslationHistory({ userId }) {
         setFilteredHistory(result);
     }, [filter, sortOrder, history]);
 
-    // Toggle selection of a single item
+    //
+    // Toggle selection
+    //
     const toggleSelect = (id) => {
         setSelectedIds(prev =>
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
         );
     };
 
-    // Select/Deselect all visible items
     const selectAll = () => {
         if (selectedIds.length === filteredHistory.length) {
             setSelectedIds([]);
         } else {
-            // Keep UUIDs as strings
             setSelectedIds(filteredHistory.map(item => item.ID));
         }
     };
 
-    // Delete selected logs
+    //
+    // Delete selected
+    //
     const deleteSelected = async () => {
         if (!selectedIds.length) return;
 
         if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} log(s)?`)) return;
 
         try {
-            const payload = { log_ids: selectedIds }; // send UUID strings
+            const payload = { log_ids: selectedIds };
 
             const response = await fetch(
                 `http://localhost:8000/translations/${userId}/logs`,
@@ -113,6 +119,8 @@ export default function TranslationHistory({ userId }) {
                         <select
                             value={filter}
                             onChange={e => setFilter(e.target.value)}
+                            onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
+                            onBlur={(e) => (e.target.style.outline = "none")}
                             style={{
                                 padding: "0.4rem 0.6rem",
                                 borderRadius: "6px",
@@ -132,7 +140,10 @@ export default function TranslationHistory({ userId }) {
 
                     {/* Sort */}
                     <button
+                        tabIndex={0}
                         onClick={() => setSortOrder(prev => prev === "Newest" ? "Oldest" : "Newest")}
+                        onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
+                        onBlur={(e) => (e.target.style.outline = "none")}
                         style={{
                             display: "flex",
                             alignItems: "center",
@@ -151,9 +162,12 @@ export default function TranslationHistory({ userId }) {
                         {sortOrder === "Newest" ? "Newest → Oldest" : "Oldest → Newest"}
                     </button>
 
-                    {/* Edit / Delete */}
+                    {/* Edit Button */}
                     <button
+                        tabIndex={0}
                         onClick={() => setEditMode(prev => !prev)}
+                        onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
+                        onBlur={(e) => (e.target.style.outline = "none")}
                         style={{
                             display: "flex",
                             alignItems: "center",
@@ -173,8 +187,12 @@ export default function TranslationHistory({ userId }) {
 
                     {editMode && (
                         <>
+                            {/* Select All */}
                             <button
+                                tabIndex={0}
                                 onClick={selectAll}
+                                onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
+                                onBlur={(e) => (e.target.style.outline = "none")}
                                 style={{
                                     padding: "0.4rem 0.6rem",
                                     borderRadius: "6px",
@@ -188,9 +206,13 @@ export default function TranslationHistory({ userId }) {
                                 {selectedIds.length === filteredHistory.length ? "Deselect All" : "Select All"}
                             </button>
 
+                            {/* Delete Selected */}
                             <button
+                                tabIndex={0}
                                 onClick={deleteSelected}
                                 disabled={!selectedIds.length}
+                                onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
+                                onBlur={(e) => (e.target.style.outline = "none")}
                                 style={{
                                     display: "flex",
                                     alignItems: "center",
@@ -224,6 +246,16 @@ export default function TranslationHistory({ userId }) {
                     {filteredHistory.map(item => (
                         <div
                             key={item.ID}
+                            tabIndex={0}
+                            className="history-card"
+                            onKeyDown={(e) => {
+                                if (editMode && (e.key === "Enter" || e.key === " ")) {
+                                    e.preventDefault();
+                                    toggleSelect(item.ID);
+                                }
+                            }}
+                            onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
+                            onBlur={(e) => (e.target.style.outline = "none")}
                             style={{
                                 border: "1px solid #ddd",
                                 borderRadius: "8px",

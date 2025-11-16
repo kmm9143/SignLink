@@ -1,0 +1,21 @@
+/* Universal keyboard-focus enhancement for all buttons/controls */
+.a11y-btn {
+    cursor: pointer;
+    outline: none;
+}
+
+    .a11y-btn:focus-visible {
+        outline: 3px solid #005fcc;
+        outline-offset: 3px;
+        border-radius: 4px;
+    }
+
+/* Optional: Improve keyboard focus for clickable divs, menus, panels */
+.a11y-focus {
+    outline: none;
+}
+
+    .a11y-focus:focus-visible {
+        outline: 3px solid #005fcc;
+        outline-offset: 3px;
+    }

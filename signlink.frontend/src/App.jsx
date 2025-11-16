@@ -37,10 +37,13 @@ export default function App() {
 
     return (
         <div style={{ padding: '2rem' }}>
-            <h1 tabIndex="0">ASL Translator</h1>
+            <h1 tabIndex="0" aria-label="ASL Translator Application Title">
+                ASL Translator
+            </h1>
 
             <p
                 tabIndex="0"
+                aria-label={`Logged in as ${user.username}`}
                 style={{ fontSize: "0.9rem", color: "#666" }}
             >
                 Logged in as <strong>{user.username}</strong>
@@ -54,7 +57,7 @@ export default function App() {
                 {/* Upload Image */}
                 <button
                     className="a11y-btn"
-                    aria-label="Switch to image upload mode"
+                    aria-label="Upload Image Button. Switch to image upload mode."
                     tabIndex="0"
                     onKeyDown={(e) =>
                         handleKeyActivate(e, () => {
@@ -79,7 +82,7 @@ export default function App() {
                 {/* Webcam */}
                 <button
                     className="a11y-btn"
-                    aria-label="Switch to webcam translation mode"
+                    aria-label="Webcam Translation Button. Open webcam mode."
                     tabIndex="0"
                     onKeyDown={(e) =>
                         handleKeyActivate(e, () => {
@@ -104,7 +107,7 @@ export default function App() {
                 {/* Upload Video */}
                 <button
                     className="a11y-btn"
-                    aria-label="Switch to video upload mode"
+                    aria-label="Upload Video Button. Switch to video upload mode."
                     tabIndex="0"
                     onKeyDown={(e) =>
                         handleKeyActivate(e, () => {
@@ -129,7 +132,7 @@ export default function App() {
                 {/* Settings */}
                 <button
                     className="a11y-btn"
-                    aria-label="Open user settings"
+                    aria-label="Open User Settings Panel"
                     tabIndex="0"
                     onKeyDown={(e) =>
                         handleKeyActivate(e, () => {
@@ -149,10 +152,10 @@ export default function App() {
                     Settings
                 </button>
 
-                {/* Translation History */}
+                {/* History */}
                 <button
                     className="a11y-btn"
-                    aria-label="Open translation history"
+                    aria-label="Open Translation History Panel"
                     tabIndex="0"
                     onKeyDown={(e) =>
                         handleKeyActivate(e, () => {
@@ -188,6 +191,8 @@ export default function App() {
             {showSettings && (
                 <div
                     className="a11y-focus"
+                    aria-label="User Settings Panel"
+                    role="region"
                     tabIndex="0"
                     style={{
                         border: '1px solid #ccc',
@@ -199,7 +204,7 @@ export default function App() {
 
                     <button
                         className="a11y-btn"
-                        aria-label="Close settings panel"
+                        aria-label="Close Settings Panel"
                         tabIndex="0"
                         onKeyDown={(e) =>
                             handleKeyActivate(e, () => setShowSettings(false))
@@ -216,6 +221,8 @@ export default function App() {
             {showHistory && (
                 <div
                     className="a11y-focus"
+                    aria-label="Translation History Panel"
+                    role="region"
                     tabIndex="0"
                     style={{
                         border: '1px solid #ccc',
@@ -223,11 +230,11 @@ export default function App() {
                         marginTop: '1rem'
                     }}
                 >
-                    <TranslationHistory userId={user.id} />c
+                    <TranslationHistory userId={user.id} />
 
                     <button
                         className="a11y-btn"
-                        aria-label="Close translation history panel"
+                        aria-label="Close Translation History Panel"
                         tabIndex="0"
                         onKeyDown={(e) =>
                             handleKeyActivate(e, () => setShowHistory(false))

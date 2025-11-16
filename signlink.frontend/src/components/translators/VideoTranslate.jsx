@@ -1,10 +1,4 @@
-﻿// DESCRIPTION:  This React component handles the "Upload Video" translation mode for the ASL Translator app.
-//                It allows users to upload video files containing sign language gestures, sends the video
-//                to the backend for frame-by-frame inference, displays top predictions per frame, and logs
-//                the last three processed videos for quick reference. The component also integrates optional
-//                text-to-speech output for recognized phrases and saves translations to the backend.
-
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import SpeakerIcon from "../common/SpeakerIcon.jsx";
 import useUserSettings from "../../hooks/useUserSettings";
 import useSpeech from "../../hooks/useSpeech";
@@ -20,10 +14,13 @@ export default function VideoTranslate({ userId = 1 }) {
     const settings = useUserSettings(userId);
     const { speaking, speakText } = useSpeech(settings);
 
-    const { sendFile, predictions, loading, error } = usePredictionAPI("/video/translate", parseVideoPredictions);
+    const { sendFile, predictions, loading, error } = usePredictionAPI(
+        "/video/translate",
+        parseVideoPredictions
+    );
 
     const [file, setFile] = useState(null);
-    const [previewUrl, setPreviewUrl] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(null); // ✅ fixed line
     const [progress, setProgress] = useState(null);
     const [log, setLog] = useState([]);
     const [validationError, setValidationError] = useState(null);
@@ -42,7 +39,6 @@ export default function VideoTranslate({ userId = 1 }) {
         }
 
         const validTypes = ["video/mp4", "video/avi", "video/quicktime", "video/mov", "video/mpeg"];
-        // note: some browsers use "video/quicktime" for MOV
         if (!validTypes.includes(selectedFile.type)) {
             setValidationError("Invalid file type. Please upload an MP4, MOV, or AVI video.");
             setFile(null);
@@ -72,35 +68,28 @@ export default function VideoTranslate({ userId = 1 }) {
             }
         });
 
-        // ✅ Graceful error fallback for server issues (same as ImageTranslate)
         if (error) {
             setValidationError(error);
             setProgress(null);
             return;
         }
 
-        // ✅ No predictions case
         if (!preds || preds.length === 0) {
             setValidationError("No predictions were returned.");
             setProgress(null);
             return;
         }
 
-        // Combine all recognized labels into one string (e.g., "H E L L O")
         const combinedText = preds.map((p) => p.label).join(" ");
 
-        // Text-to-speech output if enabled
         if (settings?.SPEECH_ENABLED) {
             speakText(combinedText);
         }
 
-        // ✅ Save to backend as a single record
         try {
             await fetch("http://localhost:8000/translations/", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     user_id: userId,
                     input_type: "video",
@@ -112,7 +101,6 @@ export default function VideoTranslate({ userId = 1 }) {
             console.warn("Failed to save video translation:", err);
         }
 
-        // ✅ Update local log (keep 3 in UI, 6 stored in DB)
         setLog((prevLog) => {
             const newEntry = {
                 videoUrl: previewUrl,
@@ -134,13 +122,16 @@ export default function VideoTranslate({ userId = 1 }) {
         const text = entry.predictions
             .map((p) => `Frame ${p.frame}: ${p.label} (${(p.confidence * 100).toFixed(1)}%)`)
             .join("\n");
+
         const blob = new Blob([text], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
+
         const link = document.createElement("a");
         link.href = url;
         const name = entry.fileName.endsWith(".mp4")
             ? entry.fileName.replace(/\.mp4$/i, ".txt")
             : entry.fileName + ".txt";
+
         link.download = name;
         document.body.appendChild(link);
         link.click();
@@ -148,26 +139,32 @@ export default function VideoTranslate({ userId = 1 }) {
         URL.revokeObjectURL(url);
     };
 
-    if (!settings) return <div>Loading user settings...</div>;
+    if (!settings)
+        return <div role="status" aria-live="polite">Loading user settings...</div>;
 
     // ----------------------------------------------------------------------
     // LEFT PANE: Video upload, progress, prediction results, and error display
     // ----------------------------------------------------------------------
     const left = (
-        <>
-            {/* Pass renderPreview so UploadPanel renders a video element (not an <img>) */}
+        <div role="region" aria-label="Video Translation Panel">
             <UploadPanel
                 accept="video/*"
+                aria-label="Video Upload Panel"
                 previewUrl={previewUrl}
                 loading={loading}
                 progress={progress}
                 onFileChange={handleFileChange}
                 onSubmit={handleSubmit}
-                submitLabel="Translate"
+                submitLabel="Translate Video"
                 disabled={!file}
                 renderPreview={(url) => (
                     <div style={{ marginTop: "1rem" }}>
-                        <video src={url} controls style={{ maxWidth: "400px", border: "1px solid #ccc" }} />
+                        <video
+                            src={url}
+                            controls
+                            aria-label="Uploaded video preview"
+                            style={{ maxWidth: "400px", border: "1px solid #ccc" }}
+                        />
                     </div>
                 )}
             >
@@ -175,25 +172,54 @@ export default function VideoTranslate({ userId = 1 }) {
                     enabled={settings?.SPEECH_ENABLED}
                     speaking={speaking}
                     size={22}
+                    aria-label={
+                        settings?.SPEECH_ENABLED
+                            ? speaking
+                                ? "Text to speech is currently speaking"
+                                : "Text to speech enabled"
+                            : "Text to speech disabled"
+                    }
+                    role="button"
                     style={{ marginLeft: "1rem" }}
                 />
 
-                {/* ✅ Unified error and validation display (matches ImageTranslate) */}
                 {validationError && (
-                    <p style={{ color: "red", marginTop: "0.5rem" }}>{validationError}</p>
+                    <p
+                        style={{ color: "red", marginTop: "0.5rem" }}
+                        role="alert"
+                        aria-live="assertive"
+                    >
+                        {validationError}
+                    </p>
                 )}
+
                 {error && !validationError && (
-                    <p style={{ color: "red", marginTop: "0.5rem" }}>
+                    <p
+                        style={{ color: "red", marginTop: "0.5rem" }}
+                        role="alert"
+                        aria-live="assertive"
+                    >
                         {error}
                     </p>
                 )}
 
                 <PredictionList
+                    aria-label="Prediction List"
                     predictions={predictions}
+                    role="list"
+                    aria-live="polite"
                     renderItem={(p, i) => {
                         const lowConfidence = p.confidence < 0.5;
                         return (
-                            <div key={i} style={{ color: lowConfidence ? "red" : "white", fontWeight: "bold" }}>
+                            <div
+                                key={i}
+                                role="listitem"
+                                aria-label={`Frame ${p.frame}: ${p.label}, confidence ${(p.confidence * 100).toFixed(1)} percent`}
+                                style={{
+                                    color: lowConfidence ? "red" : "white",
+                                    fontWeight: "bold",
+                                }}
+                            >
                                 Frame {p.frame}: {p.label} ({(p.confidence * 100).toFixed(1)}%)
                                 {lowConfidence && " — Low confidence"}
                             </div>
@@ -201,7 +227,7 @@ export default function VideoTranslate({ userId = 1 }) {
                     }}
                 />
             </UploadPanel>
-        </>
+        </div>
     );
 
     // ----------------------------------------------------------------------
@@ -210,24 +236,28 @@ export default function VideoTranslate({ userId = 1 }) {
     const right = (
         <TranslationLog
             log={log}
+            aria-label="Recent Video Translations Log"
+            role="region"
             onClear={() => setLog([])}
             renderEntry={(entry) => (
                 <>
                     <video
                         src={entry.videoUrl}
                         controls
+                        aria-label={`Video translation from ${entry.timestamp}`}
                         style={{ width: "100%", borderRadius: "6px", marginBottom: "0.4rem" }}
                     />
+
                     <div
-                        style={{
-                            fontSize: "0.8em",
-                            color: "#bbb",
-                            marginBottom: "0.5rem",
-                        }}
+                        style={{ fontSize: "0.8em", color: "#bbb", marginBottom: "0.5rem" }}
+                        aria-label={`Translation timestamp: ${entry.timestamp}`}
                     >
                         {entry.timestamp}
                     </div>
+
                     <div
+                        role="list"
+                        aria-label="Prediction details for this video"
                         style={{
                             flexGrow: 1,
                             overflowY: "auto",
@@ -238,14 +268,23 @@ export default function VideoTranslate({ userId = 1 }) {
                         }}
                     >
                         {entry.predictions?.map((p, i) => (
-                            <div key={i} style={{ color: p.confidence < 0.5 ? "red" : "white" }}>
+                            <div
+                                key={i}
+                                role="listitem"
+                                aria-label={`Frame ${p.frame}: ${p.label}, confidence ${(p.confidence * 100).toFixed(1)} percent`}
+                                style={{
+                                    color: p.confidence < 0.5 ? "red" : "white",
+                                }}
+                            >
                                 Frame {p.frame}: {p.label} ({(p.confidence * 100).toFixed(1)}%)
                                 {p.confidence < 0.5 && " — Low confidence"}
                             </div>
                         ))}
                     </div>
+
                     <button
                         onClick={() => downloadLog(entry)}
+                        aria-label={`Download transcript for video ${entry.fileName}`}
                         style={{
                             marginTop: "0.5rem",
                             padding: "4px 8px",

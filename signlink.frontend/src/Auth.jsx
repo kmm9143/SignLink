@@ -1,11 +1,7 @@
 // DESCRIPTION:  This React component handles user authentication (login and signup) for the ASL Translator app.
-//                It manages user form inputs, toggles between login and signup modes, validates responses,
-//                and communicates with the FastAPI backend to authenticate users.
+//                Updated for US8: ARIA labels, screen reader support, keyboard activation,
+//                proper form structure, and accessible error feedback.
 // LANGUAGE:     JAVASCRIPT (React.js)
-// SOURCE(S):    [1] React Documentation. (n.d.). Using the State Hook. Retrieved October 4, 2025, from https://react.dev/reference/react/useState
-//               [2] MDN Web Docs. (n.d.). Fetch API. (n.d.). Retrieved October 4, 2025, from https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
-//               [3] FastAPI Documentation. (n.d.). Request Body. Retrieved October 4, 2025, from https://fastapi.tiangolo.com/tutorial/body/
-//               [4] React Documentation. (n.d.). Handling Forms. Retrieved October 4, 2025, from https://react.dev/learn/sharing-state-between-components
 
 import { useState } from "react";
 
@@ -19,6 +15,14 @@ export default function Auth({ onLogin }) {
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
 
+    // Handle Enter or Space key activation (US8)
+    const handleKeyActivate = (event, action) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            action();
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
@@ -30,16 +34,14 @@ export default function Auth({ onLogin }) {
                 ? { first_name: firstName, last_name: lastName, email, username, password }
                 : { username, password };
 
-            // Use relative URL so Vite dev server proxy handles the request (avoids CORS)
             const res = await fetch(`/auth/${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include", // include cookies if backend uses session cookies
+                credentials: "include",
                 body: JSON.stringify(body),
             });
 
             if (!res.ok) {
-                // Try to parse JSON error, fall back to text
                 let errMsg = "Authentication failed";
                 try {
                     const errData = await res.json();
@@ -61,6 +63,8 @@ export default function Auth({ onLogin }) {
 
     return (
         <div
+            role="region"
+            aria-label="User Authentication Panel"
             style={{
                 maxWidth: "400px",
                 margin: "3rem auto",
@@ -68,15 +72,28 @@ export default function Auth({ onLogin }) {
                 border: "1px solid #ccc",
                 borderRadius: "8px",
             }}
+            tabIndex="0"
         >
-            <h2>{isSignup ? "Create Account" : "Login"}</h2>
+            <h2
+                tabIndex="0"
+                aria-label={isSignup ? "Create Account Form" : "Login Form"}
+            >
+                {isSignup ? "Create Account" : "Login"}
+            </h2>
 
-            <form onSubmit={handleSubmit}>
+            <form
+                onSubmit={handleSubmit}
+                role="form"
+                aria-label={isSignup ? "Signup form" : "Login form"}
+            >
                 {isSignup && (
                     <>
+                        {/* First Name */}
                         <div style={{ marginBottom: "1rem" }}>
-                            <label>First Name</label>
+                            <label htmlFor="firstNameInput">First Name</label>
                             <input
+                                id="firstNameInput"
+                                aria-label="First Name input field"
                                 type="text"
                                 value={firstName}
                                 onChange={(e) => setFirstName(e.target.value)}
@@ -85,9 +102,12 @@ export default function Auth({ onLogin }) {
                             />
                         </div>
 
+                        {/* Last Name */}
                         <div style={{ marginBottom: "1rem" }}>
-                            <label>Last Name</label>
+                            <label htmlFor="lastNameInput">Last Name</label>
                             <input
+                                id="lastNameInput"
+                                aria-label="Last Name input field"
                                 type="text"
                                 value={lastName}
                                 onChange={(e) => setLastName(e.target.value)}
@@ -96,9 +116,12 @@ export default function Auth({ onLogin }) {
                             />
                         </div>
 
+                        {/* Email */}
                         <div style={{ marginBottom: "1rem" }}>
-                            <label>Email</label>
+                            <label htmlFor="emailInput">Email</label>
                             <input
+                                id="emailInput"
+                                aria-label="Email input field"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -109,9 +132,12 @@ export default function Auth({ onLogin }) {
                     </>
                 )}
 
+                {/* Username */}
                 <div style={{ marginBottom: "1rem" }}>
-                    <label>Username</label>
+                    <label htmlFor="usernameInput">Username</label>
                     <input
+                        id="usernameInput"
+                        aria-label="Username input field"
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
@@ -120,9 +146,12 @@ export default function Auth({ onLogin }) {
                     />
                 </div>
 
+                {/* Password */}
                 <div style={{ marginBottom: "1rem" }}>
-                    <label>Password</label>
+                    <label htmlFor="passwordInput">Password</label>
                     <input
+                        id="passwordInput"
+                        aria-label="Password input field"
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -131,13 +160,44 @@ export default function Auth({ onLogin }) {
                     />
                 </div>
 
-                {error && <p style={{ color: "red" }}>{error}</p>}
+                {/* Error Message */}
+                {error && (
+                    <p
+                        role="alert"
+                        aria-live="assertive"
+                        style={{ color: "red" }}
+                        tabIndex="0"
+                    >
+                        {error}
+                    </p>
+                )}
 
-                <button type="submit" style={{ padding: "0.5rem 1rem", marginRight: "1rem" }}>
+                {/* Submit button */}
+                <button
+                    type="submit"
+                    className="a11y-btn"
+                    aria-label={isSignup ? "Submit Sign Up form" : "Submit Login form"}
+                    style={{ padding: "0.5rem 1rem", marginRight: "1rem" }}
+                    onKeyDown={(e) => handleKeyActivate(e, () => { })}
+                >
                     {isSignup ? "Sign Up" : "Login"}
                 </button>
 
-                <button type="button" onClick={() => setIsSignup(!isSignup)} style={{ padding: "0.5rem 1rem" }}>
+                {/* Toggle Login/Signup */}
+                <button
+                    type="button"
+                    className="a11y-btn"
+                    aria-label={
+                        isSignup
+                            ? "Switch to login mode"
+                            : "Switch to sign up mode"
+                    }
+                    style={{ padding: "0.5rem 1rem" }}
+                    onClick={() => setIsSignup(!isSignup)}
+                    onKeyDown={(e) =>
+                        handleKeyActivate(e, () => setIsSignup(!isSignup))
+                    }
+                >
                     {isSignup ? "Have an account? Login" : "New here? Sign Up"}
                 </button>
             </form>

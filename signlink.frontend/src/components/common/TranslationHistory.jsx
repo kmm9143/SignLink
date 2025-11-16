@@ -104,19 +104,28 @@ export default function TranslationHistory({ userId }) {
     };
 
     return (
-        <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1rem", color: "#111" }}>
+        <div
+            style={{ maxWidth: "700px", margin: "0 auto", padding: "1rem", color: "#111" }}
+            aria-label="Translation history section"
+        >
             {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+            <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}
+                aria-label="History controls"
+            >
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <History style={{ color: "#3b82f6" }} />
-                    <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", color: "white" }}>Translation History</h2>
+                    <History aria-hidden="true" style={{ color: "#3b82f6" }} />
+                    <h2 id="history-title" style={{ fontSize: "1.5rem", fontWeight: "bold", color: "white" }}>
+                        Translation History
+                    </h2>
                 </div>
 
                 <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                     {/* Filter */}
                     <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                        <Filter size={18} style={{ color: "#555" }} />
+                        <Filter aria-hidden="true" size={18} style={{ color: "#555" }} />
                         <select
+                            aria-label="Filter translation history"
                             value={filter}
                             onChange={e => setFilter(e.target.value)}
                             onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
@@ -140,6 +149,8 @@ export default function TranslationHistory({ userId }) {
 
                     {/* Sort */}
                     <button
+                        aria-label="Toggle sort order"
+                        aria-pressed={sortOrder === "Newest"}
                         tabIndex={0}
                         onClick={() => setSortOrder(prev => prev === "Newest" ? "Oldest" : "Newest")}
                         onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
@@ -156,14 +167,15 @@ export default function TranslationHistory({ userId }) {
                             fontSize: "0.9rem",
                             cursor: "pointer",
                         }}
-                        title="Toggle sort order"
                     >
-                        <ArrowUpDown size={16} />
+                        <ArrowUpDown aria-hidden="true" size={16} />
                         {sortOrder === "Newest" ? "Newest → Oldest" : "Oldest → Newest"}
                     </button>
 
                     {/* Edit Button */}
                     <button
+                        aria-label="Toggle edit mode"
+                        aria-pressed={editMode}
                         tabIndex={0}
                         onClick={() => setEditMode(prev => !prev)}
                         onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
@@ -181,7 +193,7 @@ export default function TranslationHistory({ userId }) {
                             cursor: "pointer",
                         }}
                     >
-                        <Edit2 size={16} />
+                        <Edit2 aria-hidden="true" size={16} />
                         {editMode ? "Cancel" : "Edit"}
                     </button>
 
@@ -189,6 +201,7 @@ export default function TranslationHistory({ userId }) {
                         <>
                             {/* Select All */}
                             <button
+                                aria-label="Select or deselect all logs"
                                 tabIndex={0}
                                 onClick={selectAll}
                                 onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
@@ -208,6 +221,7 @@ export default function TranslationHistory({ userId }) {
 
                             {/* Delete Selected */}
                             <button
+                                aria-label="Delete selected history logs"
                                 tabIndex={0}
                                 onClick={deleteSelected}
                                 disabled={!selectedIds.length}
@@ -226,7 +240,7 @@ export default function TranslationHistory({ userId }) {
                                     cursor: selectedIds.length ? "pointer" : "not-allowed",
                                 }}
                             >
-                                <Trash2 size={16} /> Delete Selected
+                                <Trash2 aria-hidden="true" size={16} /> Delete Selected
                             </button>
                         </>
                     )}
@@ -235,19 +249,27 @@ export default function TranslationHistory({ userId }) {
 
             {/* History List */}
             {loading ? (
-                <div style={{ textAlign: "center", padding: "2rem" }}>
-                    <Loader2 className="animate-spin" />
+                <div style={{ textAlign: "center", padding: "2rem" }} aria-live="polite">
+                    <Loader2 className="animate-spin" aria-hidden="true" />
                     <p>Loading history...</p>
                 </div>
             ) : filteredHistory.length === 0 ? (
-                <p style={{ textAlign: "center", color: "#777" }}>No translation history found.</p>
+                <p style={{ textAlign: "center", color: "#777" }} aria-live="polite">
+                    No translation history found.
+                </p>
             ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div
+                    style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+                    aria-label="List of translation history records"
+                    role="list"
+                >
                     {filteredHistory.map(item => (
                         <div
                             key={item.ID}
+                            role="listitem"
                             tabIndex={0}
                             className="history-card"
+                            aria-label={`History entry: ${item.RECOGNIZED_TEXT}. Created ${new Date(item.CREATED_AT).toLocaleString()}`}
                             onKeyDown={(e) => {
                                 if (editMode && (e.key === "Enter" || e.key === " ")) {
                                     e.preventDefault();
@@ -270,6 +292,7 @@ export default function TranslationHistory({ userId }) {
                             {editMode && (
                                 <input
                                     type="checkbox"
+                                    aria-label={`Select translation entry ${item.RECOGNIZED_TEXT}`}
                                     checked={selectedIds.includes(item.ID)}
                                     onChange={() => toggleSelect(item.ID)}
                                 />

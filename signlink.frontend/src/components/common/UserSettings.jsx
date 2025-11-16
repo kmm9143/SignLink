@@ -11,6 +11,9 @@ function Toggle({ label, checked, onChange }) {
 
     return (
         <div
+            role="button"
+            aria-pressed={checked}
+            aria-label={`${label} toggle`}
             tabIndex={0}
             onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -31,14 +34,23 @@ function Toggle({ label, checked, onChange }) {
                 cursor: "pointer"
             }}
         >
-            <span style={{ fontSize: '1rem', fontWeight: 500 }}>{label}</span>
+            <span
+                id={`${label.replace(/\s+/g, "-").toLowerCase()}-label`}
+                style={{ fontSize: '1rem', fontWeight: 500 }}
+            >
+                {label}
+            </span>
 
-            <label style={{ position: 'relative', display: 'inline-block', width: 50, height: 24 }}>
+            <label
+                style={{ position: 'relative', display: 'inline-block', width: 50, height: 24 }}
+                aria-hidden="true"
+            >
                 <input
                     type="checkbox"
                     checked={checked}
                     onChange={onChange}
                     tabIndex={-1}
+                    aria-hidden="true"
                     style={{ opacity: 0, width: 0, height: 0 }}
                 />
                 <span
@@ -158,7 +170,12 @@ export default function UserSettings({ userId }) {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '150px' }}>
+            <div
+                role="status"
+                aria-live="polite"
+                aria-label="Loading user settings"
+                style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '150px' }}
+            >
                 <div
                     className="spinner"
                     style={{
@@ -182,6 +199,8 @@ export default function UserSettings({ userId }) {
 
     return (
         <div
+            role="region"
+            aria-label="User Settings Panel"
             style={{
                 maxWidth: '400px',
                 margin: '0 auto',
@@ -191,7 +210,12 @@ export default function UserSettings({ userId }) {
                 background: 'gray',
             }}
         >
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', textAlign: 'center' }}>User Settings</h2>
+            <h2
+                id="user-settings-header"
+                style={{ fontSize: '1.5rem', marginBottom: '1rem', textAlign: 'center' }}
+            >
+                User Settings
+            </h2>
 
             <Toggle
                 label="Enable Speech"

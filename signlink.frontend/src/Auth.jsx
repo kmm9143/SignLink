@@ -1,9 +1,4 @@
-// DESCRIPTION:  This React component handles user authentication (login and signup) for the ASL Translator app.
-//                Updated for US8: ARIA labels, screen reader support, keyboard activation,
-//                proper form structure, and accessible error feedback.
-// LANGUAGE:     JAVASCRIPT (React.js)
-
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function Auth({ onLogin }) {
     const [username, setUsername] = useState("");
@@ -15,7 +10,14 @@ export default function Auth({ onLogin }) {
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
 
-    // Handle Enter or Space key activation (US8)
+    const containerRef = useRef(null);
+
+    // Focus container on mount
+    useEffect(() => {
+        if (containerRef.current) containerRef.current.focus();
+    }, []);
+
+    // Handle Enter or Space key activation
     const handleKeyActivate = (event, action) => {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
@@ -29,7 +31,6 @@ export default function Auth({ onLogin }) {
 
         try {
             const endpoint = isSignup ? "signup" : "login";
-
             const body = isSignup
                 ? { first_name: firstName, last_name: lastName, email, username, password }
                 : { username, password };
@@ -63,8 +64,10 @@ export default function Auth({ onLogin }) {
 
     return (
         <div
+            ref={containerRef}
             role="region"
             aria-label="User Authentication Panel"
+            tabIndex="0"
             style={{
                 maxWidth: "400px",
                 margin: "3rem auto",
@@ -72,12 +75,8 @@ export default function Auth({ onLogin }) {
                 border: "1px solid #ccc",
                 borderRadius: "8px",
             }}
-            tabIndex="0"
         >
-            <h2
-                tabIndex="0"
-                aria-label={isSignup ? "Create Account Form" : "Login Form"}
-            >
+            <h2 tabIndex="0" aria-label={isSignup ? "Create Account Form" : "Login Form"}>
                 {isSignup ? "Create Account" : "Login"}
             </h2>
 
@@ -187,16 +186,10 @@ export default function Auth({ onLogin }) {
                 <button
                     type="button"
                     className="a11y-btn"
-                    aria-label={
-                        isSignup
-                            ? "Switch to login mode"
-                            : "Switch to sign up mode"
-                    }
+                    aria-label={isSignup ? "Switch to login mode" : "Switch to sign up mode"}
                     style={{ padding: "0.5rem 1rem" }}
                     onClick={() => setIsSignup(!isSignup)}
-                    onKeyDown={(e) =>
-                        handleKeyActivate(e, () => setIsSignup(!isSignup))
-                    }
+                    onKeyDown={(e) => handleKeyActivate(e, () => setIsSignup(!isSignup))}
                 >
                     {isSignup ? "Have an account? Login" : "New here? Sign Up"}
                 </button>

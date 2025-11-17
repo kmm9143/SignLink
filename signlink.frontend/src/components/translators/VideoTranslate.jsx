@@ -13,21 +13,18 @@ import { parseVideoPredictions } from "../../services/parsers";
 export default function VideoTranslate({ userId = 1 }) {
     const settings = useUserSettings(userId);
     const { speaking, speakText } = useSpeech(settings);
-
     const { sendFile, predictions, loading, error } = usePredictionAPI(
         "/video/translate",
         parseVideoPredictions
     );
 
     const [file, setFile] = useState(null);
-    const [previewUrl, setPreviewUrl] = useState(null); // ✅ fixed line
+    const [previewUrl, setPreviewUrl] = useState(null);
     const [progress, setProgress] = useState(null);
     const [log, setLog] = useState([]);
     const [validationError, setValidationError] = useState(null);
 
-    // ----------------------------------------------------------------------
-    // Handle file selection and basic validation (only allow video formats)
-    // ----------------------------------------------------------------------
+    // Handle file selection & validation
     const handleFileChange = (e) => {
         const selectedFile = e.target.files?.[0];
         setValidationError(null);
@@ -50,9 +47,7 @@ export default function VideoTranslate({ userId = 1 }) {
         setPreviewUrl(URL.createObjectURL(selectedFile));
     };
 
-    // ----------------------------------------------------------------------
-    // Handle upload and backend prediction request
-    // ----------------------------------------------------------------------
+    // Handle upload & predictions
     const handleSubmit = async () => {
         setValidationError(null);
         if (!file) {
@@ -81,10 +76,7 @@ export default function VideoTranslate({ userId = 1 }) {
         }
 
         const combinedText = preds.map((p) => p.label).join(" ");
-
-        if (settings?.SPEECH_ENABLED) {
-            speakText(combinedText);
-        }
+        if (settings?.SPEECH_ENABLED) speakText(combinedText);
 
         try {
             await fetch("http://localhost:8000/translations/", {
@@ -107,7 +99,7 @@ export default function VideoTranslate({ userId = 1 }) {
                 predictions: preds,
                 timestamp: new Date().toLocaleString(),
                 fileName: file.name || "prediction.mp4",
-                combinedText: combinedText,
+                combinedText,
             };
             return [newEntry, ...prevLog].slice(0, 3);
         });
@@ -115,9 +107,7 @@ export default function VideoTranslate({ userId = 1 }) {
         setProgress(null);
     };
 
-    // ----------------------------------------------------------------------
-    // Download transcript log as a .txt file
-    // ----------------------------------------------------------------------
+    // Download transcript as .txt
     const downloadLog = (entry) => {
         const text = entry.predictions
             .map((p) => `Frame ${p.frame}: ${p.label} (${(p.confidence * 100).toFixed(1)}%)`)
@@ -142,9 +132,7 @@ export default function VideoTranslate({ userId = 1 }) {
     if (!settings)
         return <div role="status" aria-live="polite">Loading user settings...</div>;
 
-    // ----------------------------------------------------------------------
-    // LEFT PANE: Video upload, progress, prediction results, and error display
-    // ----------------------------------------------------------------------
+    // LEFT PANEL: Upload, progress, predictions
     const left = (
         <div role="region" aria-label="Video Translation Panel">
             <UploadPanel
@@ -172,6 +160,7 @@ export default function VideoTranslate({ userId = 1 }) {
                     enabled={settings?.SPEECH_ENABLED}
                     speaking={speaking}
                     size={22}
+                    role="img"
                     aria-label={
                         settings?.SPEECH_ENABLED
                             ? speaking
@@ -179,26 +168,17 @@ export default function VideoTranslate({ userId = 1 }) {
                                 : "Text to speech enabled"
                             : "Text to speech disabled"
                     }
-                    role="button"
                     style={{ marginLeft: "1rem" }}
                 />
 
                 {validationError && (
-                    <p
-                        style={{ color: "red", marginTop: "0.5rem" }}
-                        role="alert"
-                        aria-live="assertive"
-                    >
+                    <p role="alert" aria-live="assertive" style={{ color: "red", marginTop: "0.5rem" }}>
                         {validationError}
                     </p>
                 )}
 
                 {error && !validationError && (
-                    <p
-                        style={{ color: "red", marginTop: "0.5rem" }}
-                        role="alert"
-                        aria-live="assertive"
-                    >
+                    <p role="alert" aria-live="assertive" style={{ color: "red", marginTop: "0.5rem" }}>
                         {error}
                     </p>
                 )}
@@ -215,10 +195,7 @@ export default function VideoTranslate({ userId = 1 }) {
                                 key={i}
                                 role="listitem"
                                 aria-label={`Frame ${p.frame}: ${p.label}, confidence ${(p.confidence * 100).toFixed(1)} percent`}
-                                style={{
-                                    color: lowConfidence ? "red" : "white",
-                                    fontWeight: "bold",
-                                }}
+                                style={{ color: lowConfidence ? "red" : "white", fontWeight: "bold" }}
                             >
                                 Frame {p.frame}: {p.label} ({(p.confidence * 100).toFixed(1)}%)
                                 {lowConfidence && " — Low confidence"}
@@ -230,9 +207,7 @@ export default function VideoTranslate({ userId = 1 }) {
         </div>
     );
 
-    // ----------------------------------------------------------------------
-    // RIGHT PANE: Recent translation logs and download functionality
-    // ----------------------------------------------------------------------
+    // RIGHT PANEL: Recent translations log
     const right = (
         <TranslationLog
             log={log}
@@ -272,9 +247,7 @@ export default function VideoTranslate({ userId = 1 }) {
                                 key={i}
                                 role="listitem"
                                 aria-label={`Frame ${p.frame}: ${p.label}, confidence ${(p.confidence * 100).toFixed(1)} percent`}
-                                style={{
-                                    color: p.confidence < 0.5 ? "red" : "white",
-                                }}
+                                style={{ color: p.confidence < 0.5 ? "red" : "white" }}
                             >
                                 Frame {p.frame}: {p.label} ({(p.confidence * 100).toFixed(1)}%)
                                 {p.confidence < 0.5 && " — Low confidence"}

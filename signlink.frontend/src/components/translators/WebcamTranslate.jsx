@@ -22,6 +22,42 @@ export default function WebcamTranslate({ userId = 1 }) {
     const [pendingTranscript, setPendingTranscript] = useState("");
     const [serverError, setServerError] = useState(false);
 
+    const modalRef = useRef(null);
+
+    // Focus trap for modal
+    useEffect(() => {
+        if (showSaveModal && modalRef.current) {
+            const focusableElements = modalRef.current.querySelectorAll(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+            const firstEl = focusableElements[0];
+            const lastEl = focusableElements[focusableElements.length - 1];
+
+            const handleKeyDown = (e) => {
+                if (e.key === "Escape") {
+                    setShowSaveModal(false);
+                }
+                if (e.key === "Tab") {
+                    if (e.shiftKey) {
+                        if (document.activeElement === firstEl) {
+                            e.preventDefault();
+                            lastEl.focus();
+                        }
+                    } else {
+                        if (document.activeElement === lastEl) {
+                            e.preventDefault();
+                            firstEl.focus();
+                        }
+                    }
+                }
+            };
+
+            firstEl.focus();
+            modalRef.current.addEventListener("keydown", handleKeyDown);
+            return () => modalRef.current.removeEventListener("keydown", handleKeyDown);
+        }
+    }, [showSaveModal]);
+
     // Connection timeout
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -104,9 +140,9 @@ export default function WebcamTranslate({ userId = 1 }) {
         }
     };
 
-    if (!settings) return <div>Loading settings...</div>;
+    if (!settings) return <div role="status" aria-live="polite">Loading settings...</div>;
     if (!settings.WEBCAM_ENABLED)
-        return <div aria-live="assertive">⚠️ Webcam is disabled in your settings.</div>;
+        return <div role="alert" aria-live="assertive">⚠️ Webcam is disabled in your settings.</div>;
 
     // Server connection failed
     if (serverError && !connected) {
@@ -244,6 +280,7 @@ export default function WebcamTranslate({ userId = 1 }) {
 
             {showSaveModal && (
                 <div
+                    ref={modalRef}
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="save-dialog-title"

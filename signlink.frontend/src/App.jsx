@@ -1,10 +1,4 @@
-﻿// DESCRIPTION:  Main entry point of ASL Translator.
-//                Updated for US8: full keyboard accessibility, visible focus,
-//                Enter/Space activation, ARIA labels, and consistent navigation.
-//
-// LANGUAGE:     JAVASCRIPT (React.js)
-
-import { useState } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import ImageTranslate from './components/translators/ImageTranslate.jsx';
 import WebcamTranslate from './components/translators/WebcamTranslate.jsx';
 import VideoTranslate from './components/translators/VideoTranslate.jsx';
@@ -20,6 +14,8 @@ export default function App() {
     const [mode, setMode] = useState('image');
     const [showSettings, setShowSettings] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+    const settingsRef = useRef(null);
+    const historyRef = useRef(null);
 
     // -----------------------------
     // Accessibility Helper Function
@@ -30,6 +26,19 @@ export default function App() {
             action();
         }
     };
+
+    // Focus panel when opened
+    useEffect(() => {
+        if (showSettings && settingsRef.current) {
+            settingsRef.current.focus();
+        }
+    }, [showSettings]);
+
+    useEffect(() => {
+        if (showHistory && historyRef.current) {
+            historyRef.current.focus();
+        }
+    }, [showHistory]);
 
     if (!user) {
         return <Auth onLogin={(userData) => setUser(userData)} />;
@@ -52,129 +61,40 @@ export default function App() {
             {/* -------------------------------------
                Navigation Buttons (Keyboard Ready)
             -------------------------------------- */}
-            <div style={{ marginBottom: '1rem' }}>
-
-                {/* Upload Image */}
-                <button
-                    className="a11y-btn"
-                    aria-label="Upload Image Button. Switch to image upload mode."
-                    tabIndex="0"
-                    onKeyDown={(e) =>
-                        handleKeyActivate(e, () => {
-                            setMode('image');
-                            setShowSettings(false);
-                            setShowHistory(false);
-                        })
-                    }
-                    onClick={() => {
-                        setMode('image');
-                        setShowSettings(false);
-                        setShowHistory(false);
-                    }}
-                    style={{
-                        marginRight: '1rem',
-                        backgroundColor: mode === 'image' ? '#ccc' : ''
-                    }}
-                >
-                    Upload Image
-                </button>
-
-                {/* Webcam */}
-                <button
-                    className="a11y-btn"
-                    aria-label="Webcam Translation Button. Open webcam mode."
-                    tabIndex="0"
-                    onKeyDown={(e) =>
-                        handleKeyActivate(e, () => {
-                            setMode('webcam');
-                            setShowSettings(false);
-                            setShowHistory(false);
-                        })
-                    }
-                    onClick={() => {
-                        setMode('webcam');
-                        setShowSettings(false);
-                        setShowHistory(false);
-                    }}
-                    style={{
-                        marginRight: '1rem',
-                        backgroundColor: mode === 'webcam' ? '#ccc' : ''
-                    }}
-                >
-                    Webcam
-                </button>
-
-                {/* Upload Video */}
-                <button
-                    className="a11y-btn"
-                    aria-label="Upload Video Button. Switch to video upload mode."
-                    tabIndex="0"
-                    onKeyDown={(e) =>
-                        handleKeyActivate(e, () => {
-                            setMode('video');
-                            setShowSettings(false);
-                            setShowHistory(false);
-                        })
-                    }
-                    onClick={() => {
-                        setMode('video');
-                        setShowSettings(false);
-                        setShowHistory(false);
-                    }}
-                    style={{
-                        marginRight: '1rem',
-                        backgroundColor: mode === 'video' ? '#ccc' : ''
-                    }}
-                >
-                    Upload Video
-                </button>
-
-                {/* Settings */}
-                <button
-                    className="a11y-btn"
-                    aria-label="Open User Settings Panel"
-                    tabIndex="0"
-                    onKeyDown={(e) =>
-                        handleKeyActivate(e, () => {
-                            setShowSettings(!showSettings);
-                            setShowHistory(false);
-                        })
-                    }
-                    onClick={() => {
-                        setShowSettings(!showSettings);
-                        setShowHistory(false);
-                    }}
-                    style={{
-                        marginRight: '1rem',
-                        backgroundColor: showSettings ? '#ccc' : ''
-                    }}
-                >
-                    Settings
-                </button>
-
-                {/* History */}
-                <button
-                    className="a11y-btn"
-                    aria-label="Open Translation History Panel"
-                    tabIndex="0"
-                    onKeyDown={(e) =>
-                        handleKeyActivate(e, () => {
-                            setShowHistory(!showHistory);
-                            setShowSettings(false);
-                        })
-                    }
-                    onClick={() => {
-                        setShowHistory(!showHistory);
-                        setShowSettings(false);
-                    }}
-                    style={{
-                        marginRight: '1rem',
-                        backgroundColor: showHistory ? '#ccc' : ''
-                    }}
-                >
-                    Translation History
-                </button>
-            </div>
+            <nav aria-label="Main Navigation" style={{ marginBottom: '1rem' }}>
+                {[
+                    { label: 'Upload Image', key: 'image' },
+                    { label: 'Webcam', key: 'webcam' },
+                    { label: 'Upload Video', key: 'video' },
+                    { label: 'Settings', key: 'settings' },
+                    { label: 'Translation History', key: 'history' }
+                ].map((btn) => {
+                    const isActive = btn.key === mode ||
+                        (btn.key === 'settings' && showSettings) ||
+                        (btn.key === 'history' && showHistory);
+                    const handleClick = () => {
+                        setMode(btn.key === 'image' || btn.key === 'webcam' || btn.key === 'video' ? btn.key : mode);
+                        setShowSettings(btn.key === 'settings' ? !showSettings : false);
+                        setShowHistory(btn.key === 'history' ? !showHistory : false);
+                    };
+                    return (
+                        <button
+                            key={btn.key}
+                            className="a11y-btn"
+                            aria-label={`${btn.label} Button`}
+                            tabIndex="0"
+                            onKeyDown={(e) => handleKeyActivate(e, handleClick)}
+                            onClick={handleClick}
+                            style={{
+                                marginRight: '1rem',
+                                backgroundColor: isActive ? '#ccc' : ''
+                            }}
+                        >
+                            {btn.label}
+                        </button>
+                    );
+                })}
+            </nav>
 
             {/* -------------------------------------
                 Conditional Translator Views
@@ -189,7 +109,8 @@ export default function App() {
 
             {/* Settings Panel */}
             {showSettings && (
-                <div
+                <section
+                    ref={settingsRef}
                     className="a11y-focus"
                     aria-label="User Settings Panel"
                     role="region"
@@ -201,25 +122,23 @@ export default function App() {
                     }}
                 >
                     <UserSettings userId={user.id} />
-
                     <button
                         className="a11y-btn"
                         aria-label="Close Settings Panel"
                         tabIndex="0"
-                        onKeyDown={(e) =>
-                            handleKeyActivate(e, () => setShowSettings(false))
-                        }
+                        onKeyDown={(e) => handleKeyActivate(e, () => setShowSettings(false))}
                         onClick={() => setShowSettings(false)}
                         style={{ marginTop: '1rem' }}
                     >
                         Close Settings
                     </button>
-                </div>
+                </section>
             )}
 
             {/* History Panel */}
             {showHistory && (
-                <div
+                <section
+                    ref={historyRef}
                     className="a11y-focus"
                     aria-label="Translation History Panel"
                     role="region"
@@ -231,20 +150,17 @@ export default function App() {
                     }}
                 >
                     <TranslationHistory userId={user.id} />
-
                     <button
                         className="a11y-btn"
                         aria-label="Close Translation History Panel"
                         tabIndex="0"
-                        onKeyDown={(e) =>
-                            handleKeyActivate(e, () => setShowHistory(false))
-                        }
+                        onKeyDown={(e) => handleKeyActivate(e, () => setShowHistory(false))}
                         onClick={() => setShowHistory(false)}
                         style={{ marginTop: '1rem' }}
                     >
                         Close History
                     </button>
-                </div>
+                </section>
             )}
         </div>
     );

@@ -13,7 +13,6 @@ import { parseImagePredictions } from "../../services/parsers";
 export default function ImageTranslate({ userId = 1 }) {
     const settings = useUserSettings(userId);
     const { speaking, speakText } = useSpeech(settings);
-
     const { sendFile, predictions, loading, error } = usePredictionAPI("/image/predict", parseImagePredictions);
 
     const [file, setFile] = useState(null);
@@ -98,8 +97,7 @@ export default function ImageTranslate({ userId = 1 }) {
             <div
                 role="status"
                 aria-live="polite"
-                aria-label={`Prediction: ${pred.class}, confidence ${(pred.confidence * 100).toFixed(1)} percent${lowConfidence ? ", low confidence" : ""
-                    }`}
+                aria-label={`Prediction: ${pred.class}, confidence ${(pred.confidence * 100).toFixed(1)} percent${lowConfidence ? ", low confidence" : ""}`}
                 style={{ color: lowConfidence ? "red" : "white" }}
             >
                 {pred.class}: {(pred.confidence * 100).toFixed(1)}%
@@ -129,7 +127,7 @@ export default function ImageTranslate({ userId = 1 }) {
                             enabled={settings?.SPEECH_ENABLED}
                             speaking={speaking}
                             size={22}
-                            role="button"
+                            role="img"
                             aria-label={
                                 settings?.SPEECH_ENABLED
                                     ? speaking

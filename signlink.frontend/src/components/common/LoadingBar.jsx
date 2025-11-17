@@ -10,6 +10,7 @@ export default function LoadingBar({ progress = null, color = '#4caf50', height 
     return (
         <div
             role="progressbar"
+            tabIndex={0}
             aria-valuenow={progress === null ? undefined : Math.round(progress)}
             aria-valuemin={0}
             aria-valuemax={100}
@@ -22,7 +23,10 @@ export default function LoadingBar({ progress = null, color = '#4caf50', height 
                 overflow: 'hidden',
                 marginTop: '1rem',
                 position: 'relative',
+                outline: 'none'
             }}
+            onFocus={(e) => e.target.style.outline = "2px solid #3b82f6"}
+            onBlur={(e) => e.target.style.outline = "none"}
         >
 
             {/* Visible progress indicator */}
@@ -57,7 +61,7 @@ export default function LoadingBar({ progress = null, color = '#4caf50', height 
                 />
             )}
 
-            {/* Screen-reader-only text for precise announcement */}
+            {/* Screen-reader-only text */}
             <span
                 style={{
                     position: "absolute",

@@ -1,9 +1,3 @@
-// DESCRIPTION:   React component that allows users to view and update their personal
-//                application settings (speech and webcam features). The component
-//                fetches user preferences from the backend, displays toggle switches
-//                for each configurable option, and synchronizes changes with the API.
-// LANGUAGE:      JAVASCRIPT (React.js)
-
 import { useState, useEffect } from 'react';
 
 function Toggle({ label, checked, onChange }) {
@@ -11,9 +5,9 @@ function Toggle({ label, checked, onChange }) {
 
     return (
         <div
-            role="button"
-            aria-pressed={checked}
-            aria-label={`${label} toggle`}
+            role="switch"
+            aria-checked={checked}
+            aria-label={label}
             tabIndex={0}
             onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -31,7 +25,7 @@ function Toggle({ label, checked, onChange }) {
                 padding: '0.5rem',
                 borderRadius: '8px',
                 outline: focused ? '3px solid #3b82f6' : 'none',
-                cursor: "pointer"
+                cursor: "pointer",
             }}
         >
             <span
@@ -160,9 +154,7 @@ export default function UserSettings({ userId }) {
                 }),
             });
 
-            if (!res.ok) {
-                throw new Error('Failed to update settings');
-            }
+            if (!res.ok) throw new Error('Failed to update settings');
         } catch (err) {
             console.error(err);
         }
@@ -188,10 +180,7 @@ export default function UserSettings({ userId }) {
                     }}
                 />
                 <style>
-                    {`@keyframes spin { 
-                        0% { transform: rotate(0deg); } 
-                        100% { transform: rotate(360deg); } 
-                    }`}
+                    {`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}
                 </style>
             </div>
         );

@@ -12,9 +12,7 @@ export default function TranslationHistory({ userId }) {
     const [editMode, setEditMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
 
-    //
     // Fetch translation history
-    //
     useEffect(() => {
         const fetchHistory = async () => {
             try {
@@ -31,9 +29,7 @@ export default function TranslationHistory({ userId }) {
         if (userId != null) fetchHistory();
     }, [userId]);
 
-    //
     // Apply filter & sort
-    //
     useEffect(() => {
         localStorage.setItem("historyFilter", filter);
         localStorage.setItem("historySortOrder", sortOrder);
@@ -51,9 +47,7 @@ export default function TranslationHistory({ userId }) {
         setFilteredHistory(result);
     }, [filter, sortOrder, history]);
 
-    //
     // Toggle selection
-    //
     const toggleSelect = (id) => {
         setSelectedIds(prev =>
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
@@ -68,9 +62,7 @@ export default function TranslationHistory({ userId }) {
         }
     };
 
-    //
     // Delete selected
-    //
     const deleteSelected = async () => {
         if (!selectedIds.length) return;
 
@@ -106,6 +98,7 @@ export default function TranslationHistory({ userId }) {
     return (
         <div
             style={{ maxWidth: "700px", margin: "0 auto", padding: "1rem", color: "#111" }}
+            role="region"
             aria-label="Translation history section"
         >
             {/* Header */}

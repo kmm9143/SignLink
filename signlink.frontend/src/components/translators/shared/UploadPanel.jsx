@@ -24,6 +24,7 @@ export default function UploadPanel({
         <div
             role="region"
             aria-label="Upload Panel"
+            style={{ color: "white" }}
         >
             {/* File Input */}
             <input
@@ -31,14 +32,29 @@ export default function UploadPanel({
                 accept={accept}
                 onChange={onFileChange}
                 aria-label="Select File to Upload"
+                style={{
+                    color: "white",
+                    backgroundColor: "#222",
+                    border: "1px solid #555",
+                    padding: "0.4rem",
+                    borderRadius: "6px",
+                }}
             />
 
             {/* Submit Button */}
             <button
                 onClick={onSubmit}
                 disabled={disabled || loading}
-                style={{ marginLeft: "1rem" }}
                 aria-label={loading ? "Processing Upload" : `${submitLabel} Button`}
+                style={{
+                    marginLeft: "1rem",
+                    padding: "0.5rem 1rem",
+                    backgroundColor: disabled || loading ? "#444" : "#1a1a1a",
+                    color: "white",
+                    border: "1px solid #555",
+                    borderRadius: "6px",
+                    cursor: disabled || loading ? "not-allowed" : "pointer",
+                }}
             >
                 {loading ? "Processing..." : submitLabel}
             </button>
@@ -69,7 +85,8 @@ export default function UploadPanel({
                             style={{
                                 maxWidth: "300px",
                                 maxHeight: "300px",
-                                border: "1px solid #ccc",
+                                border: "1px solid #555", // updated contrast-safe border
+                                borderRadius: "8px",
                             }}
                         />
                     )}

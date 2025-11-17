@@ -46,6 +46,18 @@ export default function PredictionList({ predictions = [], renderItem }) {
                         key={i}
                         role="listitem"
                         aria-label={`Prediction ${i + 1}`}
+                        tabIndex={0}
+                        style={{
+                            marginBottom: "0.5rem",
+                            padding: "0.3rem",
+                            borderRadius: "4px",
+                            outline: "none",
+                            transition: "background 0.2s ease",
+                        }}
+                        onFocus={(e) => (e.target.style.outline = "2px solid #3b82f6")}
+                        onBlur={(e) => (e.target.style.outline = "none")}
+                        onMouseEnter={(e) => (e.target.style.background = "rgba(255,255,255,0.08)")}
+                        onMouseLeave={(e) => (e.target.style.background = "transparent")}
                     >
                         {renderItem ? renderItem(p, i) : JSON.stringify(p)}
                     </div>

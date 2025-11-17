@@ -38,8 +38,15 @@ export default function TranslationLog({ log = [], renderEntry, onClear, contain
                         padding: "0.4rem 0.75rem",
                         borderRadius: "6px",
                         border: "none",
-                        cursor: "pointer"
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        outline: "2px solid transparent",
+                        outlineOffset: "3px"
                     }}
+                    onFocus={(e) => (e.target.style.outline = "2px solid #ffffff")}
+                    onBlur={(e) => (e.target.style.outline = "2px solid transparent")}
+                    onMouseEnter={(e) => (e.target.style.background = "#cf3f30")}
+                    onMouseLeave={(e) => (e.target.style.background = "#e74c3c")}
                 >
                     Clear Log
                 </button>

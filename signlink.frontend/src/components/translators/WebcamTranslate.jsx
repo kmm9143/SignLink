@@ -26,36 +26,34 @@ export default function WebcamTranslate({ userId = 1 }) {
 
     // Focus trap for modal
     useEffect(() => {
-        if (showSaveModal && modalRef.current) {
-            const focusableElements = modalRef.current.querySelectorAll(
-                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-            );
-            const firstEl = focusableElements[0];
-            const lastEl = focusableElements[focusableElements.length - 1];
+        if (!showSaveModal || !modalRef.current) return;
 
-            const handleKeyDown = (e) => {
-                if (e.key === "Escape") {
-                    setShowSaveModal(false);
-                }
-                if (e.key === "Tab") {
-                    if (e.shiftKey) {
-                        if (document.activeElement === firstEl) {
-                            e.preventDefault();
-                            lastEl.focus();
-                        }
-                    } else {
-                        if (document.activeElement === lastEl) {
-                            e.preventDefault();
-                            firstEl.focus();
-                        }
-                    }
-                }
-            };
+        const modalEl = modalRef.current;
+        const focusableElements = modalEl.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstEl = focusableElements[0];
+        const lastEl = focusableElements[focusableElements.length - 1];
 
-            firstEl.focus();
-            modalRef.current.addEventListener("keydown", handleKeyDown);
-            return () => modalRef.current.removeEventListener("keydown", handleKeyDown);
-        }
+        const handleKeyDown = (e) => {
+            if (e.key === "Escape") setShowSaveModal(false);
+            if (e.key === "Tab") {
+                if (e.shiftKey && document.activeElement === firstEl) {
+                    e.preventDefault();
+                    lastEl.focus();
+                } else if (!e.shiftKey && document.activeElement === lastEl) {
+                    e.preventDefault();
+                    firstEl.focus();
+                }
+            }
+        };
+
+        firstEl?.focus();
+        modalEl.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            modalEl.removeEventListener("keydown", handleKeyDown);
+        };
     }, [showSaveModal]);
 
     // Connection timeout

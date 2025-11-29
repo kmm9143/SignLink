@@ -1,16 +1,11 @@
-// settingsService.js
-// Responsible for managing application settings (local + optional remote sync).
-// Preserves defaults, provides subscription for changes, and helpers to get/update/reset.
-
 const STORAGE_KEY = 'signlink:settings';
-const REMOTE_ENDPOINT = '/api/settings'; // adjust if backend exists
+const REMOTE_ENDPOINT = '/api/settings';
 
 const DEFAULTS = {
   theme: 'light',
   notificationsEnabled: true,
   language: 'en-US',
   autoUpdate: false,
-  // add other app defaults here
 };
 
 class SettingsService {
@@ -19,7 +14,6 @@ class SettingsService {
     this._settings = this._loadFromStorage();
   }
 
-  // Load settings from localStorage and merge with defaults
   _loadFromStorage() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -27,13 +21,11 @@ class SettingsService {
       const parsed = JSON.parse(raw);
       return { ...DEFAULTS, ...parsed };
     } catch (err) {
-      // If parsing fails, fall back to defaults
       console.error('Failed to load settings, using defaults', err);
       return { ...DEFAULTS };
     }
   }
 
-  // Persist current settings to localStorage
   _saveToStorage() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this._settings));
@@ -42,31 +34,26 @@ class SettingsService {
     }
   }
 
-  // Notify subscribers of change
   _emit() {
     for (const cb of this._listeners) {
       try {
         cb(this.getAll());
       } catch (err) {
-        // swallow listener errors
         console.error('Settings listener error', err);
       }
     }
   }
 
-  // Public: get a copy of all settings
   getAll() {
     return { ...this._settings };
   }
 
-  // Public: get a single setting by key with optional fallback
   get(key, fallback) {
     if (key in this._settings) return this._settings[key];
     if (fallback !== undefined) return fallback;
     return DEFAULTS[key];
   }
 
-  // Public: set multiple settings at once
   setAll(partial) {
     if (!partial || typeof partial !== 'object') return;
     this._settings = { ...this._settings, ...partial };
@@ -74,14 +61,12 @@ class SettingsService {
     this._emit();
   }
 
-  // Public: update a single setting
   set(key, value) {
     this._settings = { ...this._settings, [key]: value };
     this._saveToStorage();
     this._emit();
   }
 
-  // Public: reset to defaults (optionally keep overrides)
   reset(keepKeys = []) {
     const keep = Array.isArray(keepKeys) ? keepKeys : [];
     const preserved = {};
@@ -93,11 +78,9 @@ class SettingsService {
     this._emit();
   }
 
-  // Public: subscribe to changes. Returns unsubscribe function.
   subscribe(callback) {
     if (typeof callback !== 'function') throw new TypeError('callback must be a function');
     this._listeners.add(callback);
-    // immediately call with current state
     try {
       callback(this.getAll());
     } catch (err) {
@@ -106,7 +89,6 @@ class SettingsService {
     return () => this._listeners.delete(callback);
   }
 
-  // Optional: sync with remote server. Returns latest settings from server or null on failure.
   async fetchRemote() {
     try {
       const resp = await fetch(REMOTE_ENDPOINT, { credentials: 'include' });
@@ -123,7 +105,6 @@ class SettingsService {
     }
   }
 
-  // Optional: push local settings to remote server. Returns server response or null.
   async pushRemote() {
     try {
       const resp = await fetch(REMOTE_ENDPOINT, {

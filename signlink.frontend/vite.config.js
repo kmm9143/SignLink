@@ -6,14 +6,12 @@ export default defineConfig({
     plugins: [react()],
     resolve: { alias: { src: path.resolve(__dirname, 'src') } },
     server: {
-        port: 51233, // match the origin your browser uses
+        port: 51233,
         proxy: {
             '/auth': {
                 target: 'http://127.0.0.1:8000',
                 changeOrigin: true,
                 secure: false,
-                // optional: preserve path by default; use rewrite if backend expects different prefix
-                // rewrite: (path) => path.replace(/^\/auth/, '/auth')
             },
             '/settings': {
                 target: 'http://127.0.0.1:8000',
@@ -29,6 +27,12 @@ export default defineConfig({
                 target: 'http://127.0.0.1:8000',
                 changeOrigin: true,
                 secure: false,
+            },
+            '/api': {
+                target: 'http://127.0.0.1:8000',
+                changeOrigin: true,
+                secure: false,
+                rewrite: (path) => path.replace(/^\/api/, '')
             },
         },
     },

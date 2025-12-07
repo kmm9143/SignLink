@@ -18,7 +18,7 @@ export default function usePredictionAPI(endpoint, parsePredictions) {
             const res = await axios.post(endpoint, formData, {
                 headers: { "Content-Type": "multipart/form-data" },
                 onUploadProgress: onProgress,
-                timeout: 10000,
+                timeout: 100000,
             });
 
             const parsed = parsePredictions(res.data);

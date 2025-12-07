@@ -58,9 +58,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include=".coveragerc" />
-    <Content Include=".venv\pyvenv.cfg" />
-    <Content Include=".venv\Scripts\python.exe" />
-    <Content Include=".venv\Scripts\pythonw.exe" />
     <Content Include="pytest.ini" />
     <Content Include="requirements.txt" />
     <Content Include=".env" />
@@ -74,27 +71,14 @@
     <Content Include="tests\test_data\ASL_V.png" />
     <Content Include="tests\test_data\ASL_Video_OVF.mp4" />
     <Content Include="tests\test_data\Corrupted_Video.mp4" />
-    <Content Include="venv310\pyvenv.cfg" />
-    <Content Include="venv310\Scripts\python.exe" />
-    <Content Include="venv310\Scripts\pythonw.exe" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include=".venv\" />
-    <Folder Include=".venv\Include\" />
-    <Folder Include=".venv\Lib\" />
-    <Folder Include=".venv\Lib\site-packages\" />
-    <Folder Include=".venv\Scripts\" />
     <Folder Include="models\" />
     <Folder Include="logs\" />
     <Folder Include="routers\" />
     <Folder Include="tests\test_data\" />
     <Folder Include="utils\" />
     <Folder Include="tests\" />
-    <Folder Include="venv310\" />
-    <Folder Include="venv310\Include\" />
-    <Folder Include="venv310\Lib\" />
-    <Folder Include="venv310\Lib\site-packages\" />
-    <Folder Include="venv310\Scripts\" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.10" />

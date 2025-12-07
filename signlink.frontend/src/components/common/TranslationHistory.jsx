@@ -101,6 +101,7 @@ export default function TranslationHistory({ userId }) {
                             borderRadius: "6px",
                             border: "1px solid #ccc",
                             backgroundColor: "white",
+                            color: "#111",
                         }}
                     >
                         <Edit2 aria-hidden="true" size={16} />
@@ -117,6 +118,7 @@ export default function TranslationHistory({ userId }) {
                                     borderRadius: "6px",
                                     border: "1px solid #ccc",
                                     backgroundColor: "white",
+                                    color: "#111",
                                 }}
                             >
                                 {selectedIds.length === history.length

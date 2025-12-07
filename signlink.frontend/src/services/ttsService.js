@@ -1,4 +1,3 @@
-// Minimal TTS service wrapper — no UI alerts, returns boolean / invokes callbacks.
 export async function hasAudioOutputDevice() {
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -32,7 +31,7 @@ export async function speak(text, options = {}) {
     if (options.onError) utterance.onerror = () => options.onError(new Error("Speech synthesis error"));
 
     try {
-        window.speechSynthesis.cancel(); // stop any prior utterance optionally
+        window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
     } catch (err) {
         options.onError?.(err);

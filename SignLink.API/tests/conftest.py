@@ -1,4 +1,3 @@
-# tests/conftest.py
 """
 Pytest fixtures for SignLink API tests.
 
@@ -20,7 +19,6 @@ def create_test_db():
     Base.metadata.create_all(bind=engine)
 
     db = next(get_db())
-    # Seed test user if not exists
     if not db.query(UserInformation).filter_by(USER_ID=1).first():
         db.add(UserInformation(
             USER_ID=1,
@@ -31,7 +29,6 @@ def create_test_db():
         db.commit()
     db.close()
     yield
-    # Optional: drop tables after tests
     Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture

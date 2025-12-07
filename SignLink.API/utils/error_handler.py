@@ -100,5 +100,3 @@ def register_exception_handlers(app):
                 "context": "generic"
             },
         )
-
-

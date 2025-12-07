@@ -141,7 +141,7 @@ export default function UserSettings({ userId }) {
 
     const toggleSetting = async (field) => {
         const updatedSettings = { ...settings, [field]: !settings[field] };
-        setSettings(updatedSettings); // optimistic update
+        setSettings(updatedSettings);
 
         try {
             const res = await fetch(`/settings/${encodeURIComponent(userId)}`, {

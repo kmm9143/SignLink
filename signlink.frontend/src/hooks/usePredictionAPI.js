@@ -1,4 +1,3 @@
-// FILE: src/hooks/usePredictionAPI.js
 import { useState } from "react";
 import axios from "axios";
 
@@ -19,7 +18,7 @@ export default function usePredictionAPI(endpoint, parsePredictions) {
             const res = await axios.post(endpoint, formData, {
                 headers: { "Content-Type": "multipart/form-data" },
                 onUploadProgress: onProgress,
-                timeout: 10000, // Optional: prevent hanging requests (10s)
+                timeout: 10000,
             });
 
             const parsed = parsePredictions(res.data);

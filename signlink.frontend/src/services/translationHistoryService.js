@@ -1,6 +1,3 @@
-// translationHistoryService.js
-
-//const BASE_URL = "/api/translations";
 const BASE_URL = "/api/translations";
 
 class TranslationHistoryService {

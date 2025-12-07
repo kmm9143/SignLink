@@ -10,7 +10,6 @@
         border-radius: 4px;
     }
 
-/* Optional: Improve keyboard focus for clickable divs, menus, panels */
 .a11y-focus {
     outline: none;
 }

@@ -1,8 +1,3 @@
-/**
- * Parsers for translator endpoints.
- * Keep parsing logic isolated to follow OCP (add new parsers without editing components).
- */
-
 export function parseImagePredictions(data) {
     const allPredictions = [];
     if (Array.isArray(data)) {

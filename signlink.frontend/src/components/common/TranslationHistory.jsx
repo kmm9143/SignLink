@@ -1,5 +1,4 @@
-﻿// TranslationHistory.jsx
-import React from "react";
+﻿import React from "react";
 import {
     Loader2,
     History,

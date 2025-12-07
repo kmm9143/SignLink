@@ -85,11 +85,11 @@ def test_us4_live_translation_confidence(monkeypatch):
     # Mock the inference function to simulate Roboflow API responses
     from routers.translate_image import run_asl_inference
 
-    # Clear 'H' gesture (>=80%)
+    # Clear 'A' gesture (>=80%)
     def mock_inference_clear(*args, **kwargs):
         return {"predictions": [{"class": "A", "confidence": 0.85}]}
 
-    # Occluded 'H' gesture (<80%)
+    # Occluded 'A' gesture (<80%)
     def mock_inference_occluded(*args, **kwargs):
         return {"predictions": [{"class": "A", "confidence": 0.65}]}
 

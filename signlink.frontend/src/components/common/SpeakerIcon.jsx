@@ -1,6 +1,3 @@
-// SpeakerIcon.jsx
-// Accessible speaker indicator for speech output state.
-
 import React from "react";
 import { Volume2, VolumeX } from "lucide-react";
 

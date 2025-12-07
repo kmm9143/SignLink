@@ -64,6 +64,7 @@
     <Content Include="pytest.ini" />
     <Content Include="requirements.txt" />
     <Content Include=".env" />
+    <Content Include="runtime.txt" />
     <Content Include="tests\test_data\ASL_A_or_B.png" />
     <Content Include="tests\test_data\ASL_A.jpg" />
     <Content Include="tests\test_data\ASL_A.png" />
